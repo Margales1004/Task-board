@@ -186,16 +186,22 @@ class _BoardCard extends StatelessWidget {
 
     return Pressable(
       onTap: () => app.openBoard(board.id),
-      child: Stack(
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 38, 16, 16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              boxShadow: kCardShadow,
-            ),
-            child: Column(
+      // Card draws its shadow on the (unclipped) outer container; the inner
+      // ClipRRect clips the content — crucially the coloured folder tab — to
+      // the card's rounded shape so the tab can't overhang the corner.
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          boxShadow: kCardShadow,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 38, 16, 16),
+                child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
@@ -221,23 +227,25 @@ class _BoardCard extends StatelessWidget {
                 Text('$pct% done',
                     style:
                         const TextStyle(fontSize: 12, color: AppColors.muted)),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 16,
-            child: Container(
-              width: 46,
-              height: 22,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius:
-                    const BorderRadius.vertical(bottom: Radius.circular(10)),
+                  ],
+                ),
               ),
-            ),
+              Positioned(
+                top: 0,
+                left: 16,
+                child: Container(
+                  width: 46,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
