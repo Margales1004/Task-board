@@ -11,6 +11,9 @@ on:
       - claude/html-flutter-conversion-asjw5s
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -40,9 +43,23 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: task-board-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
+
+      # Publish a Release with the APK attached so it can be downloaded and
+      # installed directly on a phone (permanent link, no login, no unzip).
+      - name: Publish APK to a Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: Latest APK
+          body: |
+            Automatically built release APK of **My Boards**.
+            Download `app-release.apk` below and open it on your Android phone
+            to install (you may need to allow "install from unknown sources").
+          files: build/app/outputs/flutter-apk/app-release.apk
+          make_latest: true
