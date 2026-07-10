@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The APK is a thin WebView shell that loads the app hosted online, so
+         it needs network access. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="task_board"
+        android:label="My Boards"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

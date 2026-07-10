@@ -1,9 +1,11 @@
 name: Build Android APK
 
-# Builds a release APK on GitHub's runners (which can reach the Android SDK /
-# Google Maven, unlike the sandbox this was developed in) and uploads it as a
-# downloadable artifact. Runs on every push to the branch, and can be started
-# manually from the Actions tab ("Run workflow").
+# Builds the thin WebView "shell" APK (lib/main_shell.dart) on GitHub's
+# runners. The shell just loads the web app hosted on GitHub Pages, so this
+# APK is installed once and rarely needs rebuilding — new features/fixes ship
+# by redeploying the web build (see deploy-web.yml), not by reinstalling.
+# Runs on every push to the branch, and can be started manually from the
+# Actions tab ("Run workflow").
 
 on:
   push:
@@ -40,8 +42,8 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
-      - name: Build release APK
-        run: flutter build apk --release
+      - name: Build release APK (WebView shell)
+        run: flutter build apk --release --target lib/main_shell.dart
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -58,7 +60,10 @@ jobs:
           tag_name: apk-latest
           name: Latest APK
           body: |
-            Automatically built release APK of **My Boards**.
+            Install-once WebView shell APK of **My Boards**. It loads the app
+            from the web, so features and fixes update online automatically —
+            no need to reinstall this APK.
+
             Download `app-release.apk` below and open it on your Android phone
             to install (you may need to allow "install from unknown sources").
           files: build/app/outputs/flutter-apk/app-release.apk

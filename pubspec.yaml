@@ -12,6 +12,9 @@ dependencies:
   provider: ^6.1.2
   shared_preferences: ^2.2.3
   intl: ^0.19.0
+  # Used only by the APK shell entrypoint (lib/main_shell.dart) to host the
+  # web app inside a native WebView. Not used by the web build.
+  webview_flutter: ^4.10.0
 
 dev_dependencies:
   flutter_test:
