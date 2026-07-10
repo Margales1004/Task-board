@@ -42,6 +42,9 @@ class Task {
   String prio; // low | normal | high
   String? completedAt; // "yyyy-MM-dd"
   bool archived;
+  bool frog; // "eat the frog" — the one most-important task
+  String? remindAt; // ISO 8601 local datetime for a reminder notification
+  int pomodoros; // completed focus sessions
 
   Task({
     required this.id,
@@ -54,6 +57,9 @@ class Task {
     this.prio = TaskPrio.normal,
     this.completedAt,
     this.archived = false,
+    this.frog = false,
+    this.remindAt,
+    this.pomodoros = 0,
   });
 
   factory Task.fromJson(Map<String, dynamic> j) => Task(
@@ -67,6 +73,9 @@ class Task {
         prio: (j['prio'] as String?) ?? TaskPrio.normal,
         completedAt: j['completedAt'] as String?,
         archived: (j['archived'] as bool?) ?? false,
+        frog: (j['frog'] as bool?) ?? false,
+        remindAt: j['remindAt'] as String?,
+        pomodoros: (j['pomodoros'] as num?)?.toInt() ?? 0,
       );
 
   Map<String, dynamic> toJson() => {
@@ -80,5 +89,8 @@ class Task {
         'prio': prio,
         'completedAt': completedAt,
         'archived': archived,
+        'frog': frog,
+        'remindAt': remindAt,
+        'pomodoros': pomodoros,
       };
 }

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'app_state.dart';
 import 'theme.dart';
+import 'screens/today_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/board_screen.dart';
 import 'screens/stats_screen.dart';
@@ -55,6 +56,9 @@ class RootShell extends StatelessWidget {
 
     Widget body;
     switch (app.tab) {
+      case AppTab.today:
+        body = const TodayScreen();
+        break;
       case AppTab.stats:
         body = const StatsScreen();
         break;
@@ -128,6 +132,8 @@ class _BottomNav extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
+              _navBtn('☀️', 'Today', app.tab == AppTab.today,
+                  () => app.goTab(AppTab.today)),
               _navBtn('🗂️', 'Boards', app.tab == AppTab.home,
                   () => app.goTab(AppTab.home)),
               _navBtn('📊', 'Insights', app.tab == AppTab.stats,

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
 import '../models.dart';
+import '../reminders.dart';
 import '../theme.dart';
 import 'board_sheet.dart' show SheetKit;
 import 'common.dart';
@@ -35,6 +37,8 @@ class _TaskSheetState extends State<_TaskSheet> {
   String? _date; // yyyy-MM-dd
   String _status = TaskStatus.todo;
   String _prio = TaskPrio.normal;
+  bool _frog = false;
+  DateTime? _remindAt;
   bool _deleteArmed = false;
 
   @override
@@ -48,6 +52,8 @@ class _TaskSheetState extends State<_TaskSheet> {
     _date = t?.date;
     _status = t?.status ?? TaskStatus.todo;
     _prio = t?.prio ?? TaskPrio.normal;
+    _frog = t?.frog ?? false;
+    _remindAt = t?.remindAt != null ? DateTime.tryParse(t!.remindAt!) : null;
   }
 
   @override
@@ -70,6 +76,30 @@ class _TaskSheetState extends State<_TaskSheet> {
     if (picked != null) setState(() => _date = iso(picked));
   }
 
+  Future<void> _pickReminder() async {
+    final now = DateTime.now();
+    // Default: the due date at 09:00, else tomorrow 09:00.
+    final base = _remindAt ??
+        (_date != null
+            ? DateTime.parse('${_date}T09:00:00')
+            : DateTime(now.year, now.month, now.day + 1, 9));
+    final day = await showDatePicker(
+      context: context,
+      initialDate: base,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (day == null) return;
+    if (!mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: base.hour, minute: base.minute),
+    );
+    if (time == null) return;
+    setState(() => _remindAt =
+        DateTime(day.year, day.month, day.day, time.hour, time.minute));
+  }
+
   void _save() {
     final app = context.read<AppState>();
     final name = _name.text.trim();
@@ -86,6 +116,8 @@ class _TaskSheetState extends State<_TaskSheet> {
       note: _note.text.trim().isEmpty ? null : _note.text.trim(),
       status: _status,
       prio: _prio,
+      frog: _frog,
+      remindAt: _remindAt?.toIso8601String(),
     );
     Navigator.of(context).pop();
     Toast.show(context, 'Saved');
@@ -233,6 +265,81 @@ class _TaskSheetState extends State<_TaskSheet> {
             ],
             value: _status,
             onChanged: (v) => setState(() => _status = v),
+          ),
+        ),
+        // Reminder
+        SheetKit.field(
+          'Reminder',
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: _pickReminder,
+            child: InputDecorator(
+              decoration: SheetKit.input(''),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _remindAt == null
+                        ? 'No reminder'
+                        : DateFormat('EEE, d MMM · HH:mm').format(_remindAt!),
+                    style: TextStyle(
+                      color: _remindAt == null ? AppColors.muted : AppColors.ink,
+                      fontSize: 16,
+                    ),
+                  ),
+                  if (_remindAt != null)
+                    GestureDetector(
+                      onTap: () => setState(() => _remindAt = null),
+                      child: const Icon(Icons.close,
+                          size: 18, color: AppColors.muted),
+                    )
+                  else
+                    const Icon(Icons.notifications_none,
+                        size: 18, color: AppColors.muted),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_remindAt != null && !Reminders.available)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 14, top: 2),
+            child: Text(
+              'Reminders pop up in the installed app.',
+              style: TextStyle(fontSize: 12.5, color: AppColors.muted),
+            ),
+          ),
+        // Eat the frog
+        Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: GestureDetector(
+            onTap: () => setState(() => _frog = !_frog),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.bg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: _frog ? AppColors.ink : AppColors.line, width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  const Text('🐸', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text('Most important — do this first',
+                        style: TextStyle(
+                            fontSize: 14.5, fontWeight: FontWeight.w600)),
+                  ),
+                  Switch(
+                    value: _frog,
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: AppColors.ink,
+                    onChanged: (v) => setState(() => _frog = v),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         SheetKit.field(

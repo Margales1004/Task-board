@@ -185,6 +185,10 @@ class BoardScreen extends StatelessWidget {
     const grp = {'todo': 0, 'doing': 0, 'done': 1};
     const pRank = {'high': 0, 'normal': 1, 'low': 2};
     shown.sort((a, b) {
+      // The frog (still open) is pinned to the very top.
+      final fa = a.frog && a.status != TaskStatus.done ? 0 : 1;
+      final fb = b.frog && b.status != TaskStatus.done ? 0 : 1;
+      if (fa != fb) return fa - fb;
       final ga = grp[a.status] ?? 0, gb = grp[b.status] ?? 0;
       if (ga != gb) return ga - gb;
       final la = app.isLate(a) ? 0 : 1, lb = app.isLate(b) ? 0 : 1;
@@ -323,6 +327,7 @@ class _TaskRow extends StatelessWidget {
   }
 
   bool _hasMeta() =>
+      task.frog ||
       task.prio == TaskPrio.high ||
       task.prio == TaskPrio.low ||
       (task.date != null && task.date!.isNotEmpty) ||
@@ -333,6 +338,11 @@ class _TaskRow extends StatelessWidget {
   List<Widget> _metaTags(BuildContext context, bool late, bool today) {
     final app = context.read<AppState>();
     final tags = <Widget>[];
+
+    if (task.frog) {
+      tags.add(const Tag('🐸 Most important',
+          bg: Color(0xFFEAF6EC), fg: Color(0xFF3B7A43)));
+    }
 
     if (task.prio == TaskPrio.high) {
       tags.add(const Tag('🔥 High',

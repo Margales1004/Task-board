@@ -146,6 +146,10 @@ class StatsScreen extends StatelessWidget {
                 num: '${dueWeek.length}',
                 label: 'Due this week',
                 numColor: dueWeek.isNotEmpty ? AppColors.amber : null),
+            _StatCard(num: '${app.currentStreak()}', label: 'Day streak 🔥'),
+            _StatCard(
+                num: '${all.fold<int>(0, (s, t) => s + t.pomodoros)}',
+                label: 'Focus sessions ⏱️'),
           ],
         ),
         const SizedBox(height: 12),
