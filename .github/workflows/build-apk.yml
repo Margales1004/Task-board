@@ -7,10 +7,11 @@ name: Build Android APK
 # Runs on every push to the branch, and can be started manually from the
 # Actions tab ("Run workflow").
 
+# Manual-only: the shell APK rarely changes, so we build it on demand (from
+# the Actions tab, "Run workflow") rather than on every push. Feature work
+# ships via the web deploy (deploy-web.yml); we rebuild this APK only when the
+# native shell itself changes (e.g. notifications).
 on:
-  push:
-    branches:
-      - claude/html-flutter-conversion-asjw5s
   workflow_dispatch:
 
 permissions:

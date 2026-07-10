@@ -15,6 +15,9 @@ dependencies:
   # Used only by the APK shell entrypoint (lib/main_shell.dart) to host the
   # web app inside a native WebView. Not used by the web build.
   webview_flutter: ^4.10.0
+  flutter_local_notifications: ^22.0.1
+  timezone: ^0.11.1
+  flutter_timezone: ^5.1.0
 
 dev_dependencies:
   flutter_test:
