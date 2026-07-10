@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>My Boards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Secular+One&family=Assistant:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5F8;
+  --surface:#FFFFFF;
+  --ink:#16222F;
+  --muted:#68788A;
+  --line:#E2E8EF;
+  --danger:#D64545;
+  --amber:#B87A00;
+  --radius:18px;
+  --shadow:0 1px 2px rgba(22,34,47,.05),0 6px 20px rgba(22,34,47,.06);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:'Assistant',sans-serif;background:var(--bg);color:var(--ink);font-size:16px;overscroll-behavior-y:none}
+button{font-family:inherit;border:none;background:none;cursor:pointer;color:inherit}
+input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink)}
+.app{max-width:520px;margin:0 auto;min-height:100vh;padding:0 16px 150px;position:relative}
+
+/* ---------- header ---------- */
+.header{padding:26px 2px 6px}
+.header .kicker{font-size:13px;color:var(--muted)}
+.header h1{font-family:'Secular One',sans-serif;font-size:30px;font-weight:400;line-height:1.15;margin-top:2px}
+.header .sub{font-size:14px;color:var(--muted);margin-top:4px}
+
+.section-label{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em;margin:18px 0 10px;display:flex;align-items:center;gap:8px;text-transform:uppercase}
+.section-label::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* ---------- week strip ---------- */
+.week-scroll{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:none}
+.week-scroll::-webkit-scrollbar{display:none}
+.week-card{flex:0 0 auto;min-width:170px;max-width:220px;background:var(--surface);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow);border-left:4px solid var(--wc,#2E86AB);text-align:left}
+.week-card .wc-board{font-size:12px;font-weight:700;color:var(--wc,#2E86AB)}
+.week-card .wc-title{font-size:14.5px;font-weight:600;margin-top:2px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.week-card .wc-meta{font-size:12.5px;color:var(--muted);margin-top:6px;display:flex;gap:8px;align-items:center}
+.week-card .wc-meta .late{color:var(--danger);font-weight:700}
+
+/* ---------- boards grid ---------- */
+.boards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.board-card{position:relative;background:var(--surface);border-radius:var(--radius);padding:38px 16px 16px;box-shadow:var(--shadow);text-align:left;transition:transform .12s ease}
+.board-card:active{transform:scale(.97)}
+.board-tab{position:absolute;top:0;left:16px;width:46px;height:22px;background:var(--bc,#2E86AB);border-radius:0 0 10px 10px}
+.board-card h3{font-size:17px;font-weight:700;line-height:1.25;word-break:break-word}
+.board-card .b-count{font-size:13px;color:var(--muted);margin-top:3px}
+.board-card .b-late{color:var(--danger);font-weight:700}
+.progress{height:6px;background:var(--line);border-radius:99px;margin-top:12px;overflow:hidden}
+.progress > div{height:100%;background:var(--bc,#2E86AB);border-radius:99px;transition:width .4s ease}
+.board-card .b-pct{font-size:12px;color:var(--muted);margin-top:6px}
+
+/* ---------- empty ---------- */
+.empty{background:var(--surface);border:1.5px dashed var(--line);border-radius:var(--radius);padding:34px 22px;text-align:center;margin-top:14px}
+.empty .e-emoji{font-size:34px}
+.empty h3{font-size:18px;margin-top:10px}
+.empty p{font-size:14px;color:var(--muted);margin-top:6px;line-height:1.5}
+
+/* ---------- bottom nav & FAB ---------- */
+.bottomnav{position:fixed;bottom:0;left:0;right:0;z-index:45;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
+.bottomnav .inner{max-width:520px;margin:0 auto;display:flex}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11.5px;font-weight:700;color:var(--muted);padding:4px 0}
+.nav-btn .ni{font-size:21px;line-height:1}
+.nav-btn.active{color:var(--ink)}
+.fab{position:fixed;bottom:calc(74px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:99px;padding:14px 24px;font-size:15.5px;font-weight:700;box-shadow:0 8px 24px rgba(22,34,47,.28);display:flex;align-items:center;gap:8px;z-index:46;transition:transform .12s ease}
+.fab:active{transform:translateX(-50%) scale(.95)}
+.fab .plus{font-size:19px;line-height:1}
+
+/* ---------- board view ---------- */
+.topbar{display:flex;align-items:center;gap:10px;padding:20px 0 4px}
+.back-btn,.icon-btn{width:40px;height:40px;border-radius:12px;background:var(--surface);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;font-size:19px;flex:0 0 auto}
+.topbar .t-title{flex:1;min-width:0}
+.topbar h2{font-family:'Secular One',sans-serif;font-weight:400;font-size:23px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar .t-sub{font-size:13px;color:var(--muted)}
+.filters{display:flex;gap:8px;margin-top:16px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:8px 15px;border-radius:99px;background:var(--surface);font-size:14px;font-weight:600;color:var(--muted);box-shadow:var(--shadow)}
+.chip.active{background:var(--ink);color:#fff}
+
+.task-list{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.task{background:var(--surface);border-radius:16px;padding:13px 14px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:flex-start;border-left:4px solid transparent}
+.task.late{border-left-color:var(--danger)}
+.task.done{opacity:.55}
+.task.done .t-name{text-decoration:line-through}
+.check{width:26px;height:26px;border-radius:9px;border:2px solid var(--line);flex:0 0 auto;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;transition:all .15s ease}
+.check.on{background:var(--bc,#2E86AB);border-color:var(--bc,#2E86AB)}
+.t-body{flex:1;min-width:0}
+.t-name{font-size:16px;font-weight:600;line-height:1.3;word-break:break-word}
+.t-note{font-size:13.5px;color:var(--muted);margin-top:2px;line-height:1.4;word-break:break-word}
+.t-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag{font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:8px;background:var(--bg);color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+.tag.date.late-tag{background:#FBE9E9;color:var(--danger)}
+.tag.date.today-tag{background:#FFF4DC;color:#9A6B00}
+.tag.person{background:#EEF2F7;color:#3D5266}
+.tag.status{cursor:pointer}
+.tag.status.doing{background:#E7F0FB;color:#2563A8}
+.tag.prio-high{background:#FBE9E9;color:var(--danger)}
+.tag.prio-low{background:#F0F2F5;color:#8A97A5}
+.tag.board-tag{color:#fff}
+.edit-dot{flex:0 0 auto;font-size:18px;color:#B6C0CB;padding:2px 4px;margin-top:2px}
+
+/* archive bar & rows */
+.archive-bar{margin-top:14px;text-align:center}
+.archive-bar button{font-size:14px;font-weight:700;color:var(--muted);background:var(--surface);box-shadow:var(--shadow);border-radius:99px;padding:11px 20px}
+.arc-task{background:var(--surface);border-radius:16px;padding:13px 14px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center}
+.arc-body{flex:1;min-width:0}
+.arc-name{font-size:15.5px;font-weight:600;line-height:1.3;word-break:break-word;color:var(--muted)}
+.arc-sub{font-size:12.5px;color:#98A4B1;margin-top:3px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.arc-dot{width:9px;height:9px;border-radius:99px;background:var(--bc,#2E86AB);display:inline-block}
+.arc-btn{flex:0 0 auto;width:38px;height:38px;border-radius:12px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:17px}
+.arc-btn.danger{color:var(--danger)}
+
+/* ---------- stats ---------- */
+.stat-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.stat-card{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.stat-card .s-num{font-family:'Secular One',sans-serif;font-size:30px;line-height:1}
+.stat-card .s-lbl{font-size:13px;color:var(--muted);font-weight:600;margin-top:5px}
+.stat-card.warn .s-num{color:var(--danger)}
+.stat-card.amber .s-num{color:var(--amber)}
+.ring-card{background:var(--surface);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:18px;margin-top:12px}
+.ring-wrap{position:relative;width:104px;height:104px;flex:0 0 auto}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-txt .r-pct{font-family:'Secular One',sans-serif;font-size:24px}
+.ring-txt .r-lbl{font-size:11px;color:var(--muted);font-weight:700}
+.ring-info{flex:1}
+.ring-info h4{font-size:16px;font-weight:700}
+.ring-info p{font-size:13.5px;color:var(--muted);margin-top:4px;line-height:1.45}
+.panel{background:var(--surface);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-top:12px}
+.panel h4{font-size:15px;font-weight:700;margin-bottom:14px}
+.hbar-row{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.hbar-row:last-child{margin-bottom:0}
+.hbar-name{width:92px;flex:0 0 auto;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbar-track{flex:1;height:12px;background:var(--bg);border-radius:99px;overflow:hidden}
+.hbar-track > div{height:100%;border-radius:99px;background:var(--hc,#2E86AB);transition:width .4s ease}
+.hbar-val{width:56px;flex:0 0 auto;font-size:12.5px;color:var(--muted);text-align:right;font-weight:600}
+.days{display:flex;align-items:flex-end;gap:8px;height:110px;padding-top:6px}
+.day-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end}
+.day-bar{width:100%;max-width:34px;background:linear-gradient(180deg,#3C7C74,#2E86AB);border-radius:8px 8px 4px 4px;min-height:4px;transition:height .4s ease}
+.day-bar.zero{background:var(--line)}
+.day-n{font-size:12px;font-weight:700}
+.day-l{font-size:11px;color:var(--muted);font-weight:600}
+.person-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.person-row:last-child{border-bottom:none;padding-bottom:0}
+.person-row:first-of-type{padding-top:0}
+.avatar{width:38px;height:38px;border-radius:12px;background:var(--ac,#2E86AB);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:0 0 auto}
+.person-info{flex:1;min-width:0}
+.person-info .p-name{font-size:15px;font-weight:700}
+.person-info .p-sub{font-size:12.5px;color:var(--muted)}
+.person-late{font-size:12.5px;font-weight:700;color:var(--danger);flex:0 0 auto}
+.person-ok{font-size:15px;flex:0 0 auto}
+
+/* ---------- sheet ---------- */
+.overlay{position:fixed;inset:0;background:rgba(22,34,47,.45);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s ease}
+.overlay.show{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--surface);border-radius:24px 24px 0 0;padding:14px 20px calc(24px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto;max-height:88vh;overflow-y:auto;transform:translateY(105%);transition:transform .25s cubic-bezier(.3,.9,.3,1)}
+.sheet.show{transform:translateY(0)}
+.sheet .grab{width:42px;height:5px;border-radius:99px;background:var(--line);margin:0 auto 16px}
+.sheet h3{font-family:'Secular One',sans-serif;font-weight:400;font-size:21px;margin-bottom:16px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13.5px;font-weight:700;color:var(--muted);margin-bottom:6px}
+.field input[type=text],.field input[type=date],.field textarea,.field select{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--bg);outline:none}
+.field input:focus,.field textarea:focus{border-color:var(--ink);background:#fff}
+.field textarea{resize:none;min-height:64px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.color-row{display:flex;gap:10px;flex-wrap:wrap}
+.color-dot{width:38px;height:38px;border-radius:12px;border:3px solid transparent;transition:transform .1s ease}
+.color-dot.sel{border-color:var(--ink);transform:scale(1.08)}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;padding:10px 6px;border-radius:12px;background:var(--bg);font-size:14px;font-weight:600;color:var(--muted);border:1.5px solid var(--line)}
+.seg button.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+.seg button.sel-high{background:#FBE9E9;color:var(--danger);border-color:var(--danger)}
+.sheet .actions{display:flex;gap:10px;margin-top:20px}
+.btn{flex:1;padding:15px;border-radius:14px;font-size:16px;font-weight:700;transition:transform .1s ease}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--ink);color:#fff}
+.btn.ghost{background:var(--bg);color:var(--muted)}
+.del-row{margin-top:12px;display:flex;justify-content:center;gap:18px;flex-wrap:wrap}
+.del-row button{font-size:14px;font-weight:700;padding:10px 4px}
+.del-row .arc{color:var(--muted)}
+.del-row .del{color:var(--danger)}
+.toast{position:fixed;bottom:130px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:99px;font-size:14px;font-weight:600;opacity:0;transition:all .25s ease;z-index:90;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.hidden{display:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ HOME ============ -->
+  <div id="homeView">
+    <div class="header">
+      <div class="kicker" id="todayLine"></div>
+      <h1>My Boards</h1>
+      <div class="sub" id="summaryLine"></div>
+    </div>
+    <div id="weekSection">
+      <div class="section-label">Coming up</div>
+      <div class="week-scroll" id="weekScroll"></div>
+    </div>
+    <div class="section-label">Boards</div>
+    <div class="boards" id="boardsGrid"></div>
+    <div id="homeEmpty" class="empty hidden">
+      <div class="e-emoji">🗂️</div>
+      <h3>No boards yet</h3>
+      <p>A board is a space for one topic — work, home, a side project.<br>Tap the button below to create your first one.</p>
+    </div>
+  </div>
+
+  <!-- ============ BOARD ============ -->
+  <div id="boardView" class="hidden">
+    <div class="topbar">
+      <button class="back-btn" onclick="goHome()">←</button>
+      <div class="t-title">
+        <h2 id="boardTitle"></h2>
+        <div class="t-sub" id="boardSub"></div>
+      </div>
+      <button class="icon-btn" onclick="openBoardSheet(currentBoardId)">✎</button>
+    </div>
+    <div class="filters" id="filterRow"></div>
+    <div class="task-list" id="taskList"></div>
+    <div class="archive-bar hidden" id="archiveBar"></div>
+    <div id="boardEmpty" class="empty hidden">
+      <div class="e-emoji">☕</div>
+      <h3>No tasks here yet</h3>
+      <p>Add your first task — with a due date and who should handle it.</p>
+    </div>
+  </div>
+
+  <!-- ============ STATS ============ -->
+  <div id="statsView" class="hidden">
+    <div class="header">
+      <div class="kicker" id="statsKicker"></div>
+      <h1>Insights</h1>
+      <div class="sub">How your work is moving</div>
+    </div>
+    <div id="statsBody"></div>
+  </div>
+
+  <!-- ============ ARCHIVE ============ -->
+  <div id="archiveView" class="hidden">
+    <div class="header">
+      <div class="kicker" id="archKicker"></div>
+      <h1>Archive</h1>
+      <div class="sub">Done and dusted — but still counted in your stats</div>
+    </div>
+    <div class="task-list" id="archiveList"></div>
+    <div id="archiveEmpty" class="empty hidden">
+      <div class="e-emoji">🗄️</div>
+      <h3>The archive is empty</h3>
+      <p>When tasks are completed, archive them from the board —<br>they'll move here instead of cluttering your lists.</p>
+    </div>
+  </div>
+
+  <button class="fab" id="fab" onclick="onFab()"><span class="plus">＋</span><span id="fabLabel">New board</span></button>
+
+  <nav class="bottomnav">
+    <div class="inner">
+      <button class="nav-btn active" id="navHome" onclick="goTab('home')"><span class="ni">🗂️</span>Boards</button>
+      <button class="nav-btn" id="navStats" onclick="goTab('stats')"><span class="ni">📊</span>Insights</button>
+      <button class="nav-btn" id="navArchive" onclick="goTab('archive')"><span class="ni">🗄️</span>Archive</button>
+    </div>
+  </nav>
+</div>
+
+<!-- ============ SHEETS ============ -->
+<div class="overlay" id="overlay" onclick="closeSheets()"></div>
+
+<div class="sheet" id="boardSheet">
+  <div class="grab"></div>
+  <h3 id="boardSheetTitle">New board</h3>
+  <div class="field">
+    <label>Board name</label>
+    <input type="text" id="bName" placeholder="e.g. Work, Home, Event planning" maxlength="40">
+  </div>
+  <div class="field">
+    <label>Color</label>
+    <div class="color-row" id="colorRow"></div>
+  </div>
+  <div class="actions">
+    <button class="btn ghost" onclick="closeSheets()">Cancel</button>
+    <button class="btn primary" onclick="saveBoard()">Save</button>
+  </div>
+  <div class="del-row" id="boardDelRow"></div>
+</div>
+
+<div class="sheet" id="taskSheet">
+  <div class="grab"></div>
+  <h3 id="taskSheetTitle">New task</h3>
+  <div class="field">
+    <label>What needs to get done?</label>
+    <input type="text" id="tName" placeholder="e.g. Send summary to the client" maxlength="120">
+  </div>
+  <div class="row2">
+    <div class="field">
+      <label>Due date</label>
+      <input type="date" id="tDate">
+    </div>
+    <div class="field">
+      <label>Assigned to</label>
+      <input type="text" id="tPerson" list="peopleList" placeholder="Name" maxlength="30">
+      <datalist id="peopleList"></datalist>
+    </div>
+  </div>
+  <div class="field">
+    <label>Priority</label>
+    <div class="seg" id="prioSeg">
+      <button data-p="low" onclick="pickPrio('low')">Low</button>
+      <button data-p="normal" onclick="pickPrio('normal')">Normal</button>
+      <button data-p="high" onclick="pickPrio('high')">High 🔥</button>
+    </div>
+  </div>
+  <div class="field">
+    <label>Status</label>
+    <div class="seg" id="statusSeg">
+      <button data-s="todo" onclick="pickStatus('todo')">To do</button>
+      <button data-s="doing" onclick="pickStatus('doing')">In progress</button>
+      <button data-s="done" onclick="pickStatus('done')">Done</button>
+    </div>
+  </div>
+  <div class="field">
+    <label>Note (optional)</label>
+    <textarea id="tNote" placeholder="Details, a link, a reminder to yourself..." maxlength="400"></textarea>
+  </div>
+  <div class="actions">
+    <button class="btn ghost" onclick="closeSheets()">Cancel</button>
+    <button class="btn primary" onclick="saveTask()">Save</button>
+  </div>
+  <div class="del-row" id="taskDelRow"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= state & storage ================= */
+const COLORS = ['#2E86AB','#E76F51','#588157','#7B5EA7','#C95D8A','#B8860B','#3C7C74','#5A6B8C'];
+const STORE_KEY = 'moran-taskboards-v1';
+let data = { boards: [], tasks: [] };
+let tab = 'home';                 /* 'home' | 'stats' | 'archive' */
+let currentBoardId = null;
+let currentFilter = 'all';
+let editBoardId = null, editTaskId = null, pickedColor = COLORS[0], pickedStatus = 'todo', pickedPrio = 'normal';
+let deleteArm = null, arcDeleteArm = null;
+
+async function load(){
+  try{
+    const r = await window.storage.get(STORE_KEY);
+    if(r && r.value) data = JSON.parse(r.value);
+  }catch(e){ /* first run */ }
+  render();
+}
+let saveTimer = null;
+function persist(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    try{ await window.storage.set(STORE_KEY, JSON.stringify(data)); }
+    catch(e){ toast('Save failed — please try again'); }
+  }, 250);
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const activeTasks = () => data.tasks.filter(t=>!t.archived);
+const archivedTasks = () => data.tasks.filter(t=>t.archived);
+
+/* ================= date helpers ================= */
+function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function todayStr(){ return iso(new Date()); }
+function fmtDate(s){
+  if(!s) return '';
+  if(s === todayStr()) return 'Today';
+  const tm = new Date(); tm.setDate(tm.getDate()+1);
+  if(s === iso(tm)) return 'Tomorrow';
+  return new Date(s+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short', day:'numeric', month:'short'});
+}
+const isLate  = t => t.date && t.status!=='done' && t.date < todayStr();
+const isToday = t => t.date === todayStr();
+
+/* ================= navigation ================= */
+function goTab(t){ tab = t; currentBoardId = null; window.scrollTo(0,0); render(); }
+function openBoard(id){ tab='home'; currentBoardId=id; currentFilter='all'; window.scrollTo(0,0); render(); }
+function goHome(){ currentBoardId=null; window.scrollTo(0,0); render(); }
+function updateChrome(){
+  document.getElementById('navHome').classList.toggle('active', tab==='home');
+  document.getElementById('navStats').classList.toggle('active', tab==='stats');
+  document.getElementById('navArchive').classList.toggle('active', tab==='archive');
+  document.getElementById('fab').classList.toggle('hidden', tab!=='home');
+  document.getElementById('fabLabel').textContent = currentBoardId ? 'New task' : 'New board';
+}
+function onFab(){ currentBoardId ? openTaskSheet(null) : openBoardSheet(null); }
+
+function render(){
+  ['homeView','boardView','statsView','archiveView'].forEach(v=>document.getElementById(v).classList.add('hidden'));
+  if(tab==='stats') renderStats();
+  else if(tab==='archive') renderArchive();
+  else if(currentBoardId) renderBoard();
+  else renderHome();
+  updateChrome();
+}
+
+/* ================= render: home ================= */
+function renderHome(){
+  document.getElementById('homeView').classList.remove('hidden');
+  document.getElementById('todayLine').textContent =
+    new Date().toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'long'});
+
+  const act = activeTasks();
+  const open = act.filter(t=>t.status!=='done');
+  const late = open.filter(isLate).length;
+  let sum = open.length ? `${open.length} open task${open.length>1?'s':''}` : 'All clear. Nice work 👏';
+  if(late) sum += ` · ${late} overdue`;
+  document.getElementById('summaryLine').textContent = data.boards.length ? sum : "Let's get started";
+
+  const week = new Date(); week.setDate(week.getDate()+7);
+  const upcoming = act
+    .filter(x=>x.status!=='done' && x.date && x.date <= iso(week))
+    .sort((a,b)=>a.date.localeCompare(b.date)).slice(0,10);
+  const wsec = document.getElementById('weekSection');
+  if(!upcoming.length){ wsec.classList.add('hidden'); }
+  else{
+    wsec.classList.remove('hidden');
+    document.getElementById('weekScroll').innerHTML = upcoming.map(x=>{
+      const b = data.boards.find(bb=>bb.id===x.boardId) || {name:'',color:'#2E86AB'};
+      const late = isLate(x);
+      return `<button class="week-card" style="--wc:${b.color}" onclick="openBoard('${x.boardId}')">
+        <div class="wc-board">${esc(b.name)}</div>
+        <div class="wc-title">${x.prio==='high'?'🔥 ':''}${esc(x.name)}</div>
+        <div class="wc-meta"><span class="${late?'late':''}">${late?'⚠ ':''}${fmtDate(x.date)}</span>${x.person?`<span>· ${esc(x.person)}</span>`:''}</div>
+      </button>`;
+    }).join('');
+  }
+
+  const grid = document.getElementById('boardsGrid');
+  const emp = document.getElementById('homeEmpty');
+  if(!data.boards.length){ grid.innerHTML=''; emp.classList.remove('hidden'); return; }
+  emp.classList.add('hidden');
+  grid.innerHTML = data.boards.map(b=>{
+    const ts = act.filter(x=>x.boardId===b.id);
+    const done = ts.filter(x=>x.status==='done').length;
+    const late = ts.filter(isLate).length;
+    const pct = ts.length ? Math.round(done/ts.length*100) : 0;
+    return `<button class="board-card" style="--bc:${b.color}" onclick="openBoard('${b.id}')">
+      <div class="board-tab"></div>
+      <h3>${esc(b.name)}</h3>
+      <div class="b-count">${ts.length ? `${ts.length-done} open of ${ts.length}` : 'Empty for now'}${late?` · <span class="b-late">${late} overdue</span>`:''}</div>
+      <div class="progress"><div style="width:${pct}%"></div></div>
+      <div class="b-pct">${pct}% done</div>
+    </button>`;
+  }).join('');
+}
+
+/* ================= render: board ================= */
+const FILTERS = [['all','All'],['todo','To do'],['doing','In progress'],['done','Done'],['late','Overdue'],['high','High 🔥']];
+function renderBoard(){
+  const b = data.boards.find(x=>x.id===currentBoardId);
+  if(!b){ goHome(); return; }
+  document.getElementById('boardView').classList.remove('hidden');
+  document.getElementById('boardTitle').textContent = b.name;
+
+  const ts = activeTasks().filter(x=>x.boardId===b.id);
+  const open = ts.filter(x=>x.status!=='done').length;
+  document.getElementById('boardSub').textContent = ts.length ? `${open} open · ${ts.length-open} done` : '';
+
+  document.getElementById('filterRow').innerHTML = FILTERS.map(([k,l])=>{
+    if(k==='late'){ const c=ts.filter(isLate).length; if(!c && currentFilter!=='late') return ''; l+= c?` ${c}`:''; }
+    if(k==='high'){ const c=ts.filter(x=>x.prio==='high'&&x.status!=='done').length; if(!c && currentFilter!=='high') return ''; }
+    return `<button class="chip ${currentFilter===k?'active':''}" onclick="setFilter('${k}')">${l}</button>`;
+  }).join('');
+
+  let shown = ts.filter(x=>{
+    if(currentFilter==='all') return true;
+    if(currentFilter==='late') return isLate(x);
+    if(currentFilter==='high') return x.prio==='high';
+    return x.status===currentFilter;
+  });
+  const grp = {todo:0, doing:0, done:1};
+  const pRank = {high:0, normal:1, low:2};
+  shown.sort((a,b2)=>{
+    if(grp[a.status]!==grp[b2.status]) return grp[a.status]-grp[b2.status];
+    const la=isLate(a)?0:1, lb=isLate(b2)?0:1;
+    if(la!==lb) return la-lb;
+    if(a.date&&b2.date && a.date!==b2.date) return a.date.localeCompare(b2.date);
+    if(a.date&&!b2.date) return -1;
+    if(!a.date&&b2.date) return 1;
+    return pRank[a.prio||'normal']-pRank[b2.prio||'normal'];
+  });
+
+  const list = document.getElementById('taskList');
+  const emp = document.getElementById('boardEmpty');
+  const bar = document.getElementById('archiveBar');
+  const doneCount = ts.filter(x=>x.status==='done').length;
+  if(doneCount && (currentFilter==='all'||currentFilter==='done')){
+    bar.classList.remove('hidden');
+    bar.innerHTML = `<button onclick="archiveDone()">🗄️ Archive ${doneCount} completed task${doneCount>1?'s':''}</button>`;
+  } else bar.classList.add('hidden');
+
+  if(!shown.length){
+    list.innerHTML='';
+    if(!ts.length){ emp.classList.remove('hidden'); }
+    else{ emp.classList.add('hidden'); list.innerHTML = `<div class="empty"><div class="e-emoji">🔍</div><h3>Nothing matches this filter</h3></div>`; }
+    return;
+  }
+  emp.classList.add('hidden');
+  list.innerHTML = shown.map(x=>{
+    const late = isLate(x), today = isToday(x)&&x.status!=='done';
+    const statusTag = x.status==='doing' ? `<span class="tag status doing" onclick="event.stopPropagation();cycleStatus('${x.id}')">◐ In progress</span>`
+      : (x.status==='todo' ? `<span class="tag status" onclick="event.stopPropagation();cycleStatus('${x.id}')">○ To do</span>` : '');
+    const prioTag = x.prio==='high' ? `<span class="tag prio-high">🔥 High</span>` : (x.prio==='low' ? `<span class="tag prio-low">Low</span>` : '');
+    return `<div class="task ${x.status==='done'?'done':''} ${late?'late':''}" style="--bc:${b.color}" onclick="openTaskSheet('${x.id}')">
+      <button class="check ${x.status==='done'?'on':''}" onclick="event.stopPropagation();toggleDone('${x.id}')">${x.status==='done'?'✓':''}</button>
+      <div class="t-body">
+        <div class="t-name">${esc(x.name)}</div>
+        ${x.note?`<div class="t-note">${esc(x.note)}</div>`:''}
+        <div class="t-meta">
+          ${prioTag}
+          ${x.date?`<span class="tag date ${late?'late-tag':''} ${today?'today-tag':''}">${late?'⚠ ':'📅 '}${fmtDate(x.date)}</span>`:''}
+          ${x.person?`<span class="tag person">👤 ${esc(x.person)}</span>`:''}
+          ${statusTag}
+        </div>
+      </div>
+      <span class="edit-dot">›</span>
+    </div>`;
+  }).join('');
+}
+function setFilter(f){ currentFilter=f; renderBoard(); }
+function archiveDone(){
+  const ts = activeTasks().filter(x=>x.boardId===currentBoardId && x.status==='done');
+  ts.forEach(t=>{ t.archived = true; if(!t.completedAt) t.completedAt = todayStr(); });
+  persist(); render(); toast(`Archived ${ts.length} task${ts.length>1?'s':''} 🗄️`);
+}
+
+/* ================= render: archive ================= */
+function renderArchive(){
+  document.getElementById('archiveView').classList.remove('hidden');
+  const arch = archivedTasks().sort((a,b)=>(b.completedAt||'').localeCompare(a.completedAt||''));
+  document.getElementById('archKicker').textContent = arch.length ? `${arch.length} archived task${arch.length>1?'s':''}` : '';
+  const list = document.getElementById('archiveList');
+  const emp = document.getElementById('archiveEmpty');
+  if(!arch.length){ list.innerHTML=''; emp.classList.remove('hidden'); return; }
+  emp.classList.add('hidden');
+  list.innerHTML = arch.map(x=>{
+    const b = data.boards.find(bb=>bb.id===x.boardId) || {name:'(deleted board)', color:'#98A4B1'};
+    const delArmed = arcDeleteArm===x.id;
+    return `<div class="arc-task">
+      <div class="arc-body">
+        <div class="arc-name">${esc(x.name)}</div>
+        <div class="arc-sub">
+          <span class="arc-dot" style="--bc:${b.color}"></span>${esc(b.name)}
+          ${x.person?` · ${esc(x.person)}`:''}
+          ${x.completedAt?` · done ${fmtDate(x.completedAt)}`:''}
+        </div>
+      </div>
+      <button class="arc-btn" title="Restore" onclick="restoreTask('${x.id}')">↩️</button>
+      <button class="arc-btn danger" title="Delete forever" onclick="arcDelete('${x.id}')">${delArmed?'❗':'🗑'}</button>
+    </div>`;
+  }).join('');
+}
+function restoreTask(id){
+  const t = data.tasks.find(x=>x.id===id); if(!t) return;
+  t.archived = false;
+  persist(); render(); toast('Restored to its board ↩️');
+}
+function arcDelete(id){
+  if(arcDeleteArm !== id){ arcDeleteArm = id; render(); toast('Tap again to delete forever'); return; }
+  data.tasks = data.tasks.filter(x=>x.id!==id);
+  arcDeleteArm = null;
+  persist(); render(); toast('Deleted forever');
+}
+
+/* ================= render: stats ================= */
+function renderStats(){
+  document.getElementById('statsView').classList.remove('hidden');
+  document.getElementById('statsKicker').textContent =
+    new Date().toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'long'});
+  const body = document.getElementById('statsBody');
+
+  const all = data.tasks;                 /* includes archived — history counts */
+  const act = activeTasks();
+  if(!all.length){
+    body.innerHTML = `<div class="empty"><div class="e-emoji">📊</div><h3>No data yet</h3><p>Add a few tasks and this screen will come to life —<br>progress, overdue items, weekly pace and who's doing what.</p></div>`;
+    return;
+  }
+
+  const done = all.filter(x=>x.status==='done');
+  const open = act.filter(x=>x.status!=='done');
+  const doing = act.filter(x=>x.status==='doing');
+  const late = act.filter(isLate);
+  const week = new Date(); week.setDate(week.getDate()+7);
+  const dueWeek = open.filter(x=>x.date && x.date >= todayStr() && x.date <= iso(week));
+  const pct = all.length ? Math.round(done.length/all.length*100) : 0;
+
+  const days = [];
+  for(let i=6;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const key = iso(d);
+    days.push({ key, label: d.toLocaleDateString('en-GB',{weekday:'narrow'}), n: done.filter(x=>x.completedAt===key).length });
+  }
+  const maxDay = Math.max(1, ...days.map(d=>d.n));
+  const weekDone = days.reduce((s,d)=>s+d.n,0);
+
+  const boardRows = data.boards.map(b=>{
+    const bAll = all.filter(x=>x.boardId===b.id);
+    return { name:b.name, color:b.color, open: act.filter(x=>x.boardId===b.id && x.status!=='done').length, total:bAll.length };
+  }).filter(r=>r.total>0).sort((a,b)=>b.open-a.open);
+  const maxOpen = Math.max(1, ...boardRows.map(r=>r.open));
+
+  const people = {};
+  all.forEach(x=>{
+    if(!x.person) return;
+    if(!people[x.person]) people[x.person] = {open:0, done:0, late:0};
+    if(x.status==='done') people[x.person].done++;
+    else if(!x.archived){ people[x.person].open++; if(isLate(x)) people[x.person].late++; }
+  });
+  const personRows = Object.entries(people).sort((a,b)=>b[1].open-a[1].open);
+
+  const R=44, C=2*Math.PI*R;
+  const donut = `
+    <svg width="104" height="104" viewBox="0 0 104 104">
+      <circle cx="52" cy="52" r="${R}" fill="none" stroke="var(--line)" stroke-width="11"/>
+      <circle cx="52" cy="52" r="${R}" fill="none" stroke="#2E86AB" stroke-width="11" stroke-linecap="round"
+        stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct/100)}"/>
+    </svg>`;
+
+  let ringMsg;
+  if(late.length) ringMsg = `${late.length} task${late.length>1?'s are':' is'} overdue — worth a look first.`;
+  else if(doing.length) ringMsg = `${doing.length} in progress right now. Keep the momentum.`;
+  else if(!open.length) ringMsg = `Everything is done. Enjoy it while it lasts 😌`;
+  else ringMsg = `${open.length} open, nothing overdue. You're on top of it.`;
+
+  const archCount = archivedTasks().length;
+
+  body.innerHTML = `
+    <div class="stat-cards">
+      <div class="stat-card"><div class="s-num">${open.length}</div><div class="s-lbl">Open tasks</div></div>
+      <div class="stat-card"><div class="s-num">${done.length}</div><div class="s-lbl">Completed (all time)</div></div>
+      <div class="stat-card ${late.length?'warn':''}"><div class="s-num">${late.length}</div><div class="s-lbl">Overdue</div></div>
+      <div class="stat-card ${dueWeek.length?'amber':''}"><div class="s-num">${dueWeek.length}</div><div class="s-lbl">Due this week</div></div>
+    </div>
+
+    <div class="ring-card">
+      <div class="ring-wrap">${donut}
+        <div class="ring-txt"><span class="r-pct">${pct}%</span><span class="r-lbl">DONE</span></div>
+      </div>
+      <div class="ring-info">
+        <h4>Overall progress</h4>
+        <p>${ringMsg}${archCount?` <span style="color:#98A4B1">(${archCount} in archive)</span>`:''}</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h4>Completed in the last 7 days · ${weekDone} total</h4>
+      <div class="days">
+        ${days.map(d=>`<div class="day-col">
+          <span class="day-n">${d.n||''}</span>
+          <div class="day-bar ${d.n?'':'zero'}" style="height:${d.n? Math.max(10, d.n/maxDay*70) : 4}px"></div>
+          <span class="day-l">${d.label}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    ${boardRows.length ? `<div class="panel">
+      <h4>Open tasks by board</h4>
+      ${boardRows.map(r=>`<div class="hbar-row">
+        <span class="hbar-name">${esc(r.name)}</span>
+        <div class="hbar-track"><div style="--hc:${r.color};width:${r.open? Math.max(6, r.open/maxOpen*100) : 0}%"></div></div>
+        <span class="hbar-val">${r.open} open</span>
+      </div>`).join('')}
+    </div>` : ''}
+
+    ${personRows.length ? `<div class="panel">
+      <h4>By person</h4>
+      ${personRows.map(([name,p],i)=>`<div class="person-row">
+        <div class="avatar" style="--ac:${COLORS[i%COLORS.length]}">${esc(name.trim()[0].toUpperCase())}</div>
+        <div class="person-info">
+          <div class="p-name">${esc(name)}</div>
+          <div class="p-sub">${p.open} open · ${p.done} done</div>
+        </div>
+        ${p.late?`<span class="person-late">⚠ ${p.late} overdue</span>`:`<span class="person-ok">✅</span>`}
+      </div>`).join('')}
+    </div>` : ''}
+  `;
+}
+
+/* ================= task actions ================= */
+function toggleDone(id){
+  const t = data.tasks.find(x=>x.id===id); if(!t) return;
+  if(t.status==='done'){ t.status='todo'; t.completedAt=null; }
+  else { t.status='done'; t.completedAt=todayStr(); setTimeout(()=>toast('Done ✓'),50); }
+  persist(); render();
+}
+function cycleStatus(id){
+  const t = data.tasks.find(x=>x.id===id); if(!t) return;
+  t.status = t.status==='todo' ? 'doing' : 'todo';
+  persist(); render();
+}
+
+/* ================= sheets ================= */
+function openBoardSheet(id){
+  editBoardId = id; deleteArm = null;
+  const b = id ? data.boards.find(x=>x.id===id) : null;
+  document.getElementById('boardSheetTitle').textContent = b ? 'Edit board' : 'New board';
+  document.getElementById('bName').value = b ? b.name : '';
+  pickedColor = b ? b.color : COLORS[data.boards.length % COLORS.length];
+  renderColorRow();
+  document.getElementById('boardDelRow').innerHTML = b ? `<button class="del" onclick="deleteBoard()">Delete this board and all its tasks</button>` : '';
+  showSheet('boardSheet');
+  if(!b) setTimeout(()=>document.getElementById('bName').focus(),280);
+}
+function renderColorRow(){
+  document.getElementById('colorRow').innerHTML = COLORS.map(c=>
+    `<button class="color-dot ${c===pickedColor?'sel':''}" style="background:${c}" onclick="pickColor('${c}')"></button>`).join('');
+}
+function pickColor(c){ pickedColor=c; renderColorRow(); }
+function saveBoard(){
+  const name = document.getElementById('bName').value.trim();
+  if(!name){ toast('The board needs a name'); return; }
+  if(editBoardId){
+    const b = data.boards.find(x=>x.id===editBoardId);
+    b.name=name; b.color=pickedColor;
+  }else{
+    const id = uid();
+    data.boards.push({id, name, color:pickedColor});
+    currentBoardId = id; currentFilter='all'; tab='home';
+  }
+  persist(); closeSheets(); render(); toast('Saved');
+}
+function deleteBoard(){
+  if(deleteArm!=='board'){ deleteArm='board';
+    document.getElementById('boardDelRow').innerHTML = `<button class="del" onclick="deleteBoard()">Sure? Tap again to delete permanently</button>`;
+    return;
+  }
+  data.tasks = data.tasks.filter(x=>x.boardId!==editBoardId);
+  data.boards = data.boards.filter(x=>x.id!==editBoardId);
+  currentBoardId=null; persist(); closeSheets(); render(); toast('Board deleted');
+}
+
+function openTaskSheet(id){
+  editTaskId = id; deleteArm=null;
+  const t = id ? data.tasks.find(x=>x.id===id) : null;
+  document.getElementById('taskSheetTitle').textContent = t ? 'Edit task' : 'New task';
+  document.getElementById('tName').value = t ? t.name : '';
+  document.getElementById('tDate').value = t ? (t.date||'') : '';
+  document.getElementById('tPerson').value = t ? (t.person||'') : '';
+  document.getElementById('tNote').value = t ? (t.note||'') : '';
+  pickStatus(t ? t.status : 'todo');
+  pickPrio(t ? (t.prio||'normal') : 'normal');
+  const people = [...new Set(data.tasks.map(x=>x.person).filter(Boolean))];
+  document.getElementById('peopleList').innerHTML = people.map(p=>`<option value="${esc(p)}">`).join('');
+  document.getElementById('taskDelRow').innerHTML = t
+    ? `<button class="arc" onclick="archiveTask()">🗄️ Move to archive</button><button class="del" onclick="deleteTask()">Delete</button>`
+    : '';
+  showSheet('taskSheet');
+  if(!t) setTimeout(()=>document.getElementById('tName').focus(),280);
+}
+function pickStatus(s){
+  pickedStatus=s;
+  document.querySelectorAll('#statusSeg button').forEach(b=>b.classList.toggle('sel', b.dataset.s===s));
+}
+function pickPrio(p){
+  pickedPrio=p;
+  document.querySelectorAll('#prioSeg button').forEach(b=>{
+    b.classList.toggle('sel', b.dataset.p===p && p!=='high');
+    b.classList.toggle('sel-high', b.dataset.p===p && p==='high');
+  });
+}
+function saveTask(){
+  const name = document.getElementById('tName').value.trim();
+  if(!name){ toast("What's the task?"); return; }
+  const prev = editTaskId ? data.tasks.find(x=>x.id===editTaskId) : null;
+  const payload = {
+    name,
+    date: document.getElementById('tDate').value || null,
+    person: document.getElementById('tPerson').value.trim() || null,
+    note: document.getElementById('tNote').value.trim() || null,
+    status: pickedStatus,
+    prio: pickedPrio,
+    completedAt: pickedStatus==='done' ? (prev && prev.completedAt ? prev.completedAt : todayStr()) : null
+  };
+  if(prev){ Object.assign(prev, payload); }
+  else { data.tasks.push({id:uid(), boardId:currentBoardId, ...payload}); }
+  persist(); closeSheets(); render(); toast('Saved');
+}
+function archiveTask(){
+  const t = data.tasks.find(x=>x.id===editTaskId); if(!t) return;
+  t.archived = true;
+  if(t.status==='done' && !t.completedAt) t.completedAt = todayStr();
+  persist(); closeSheets(); render(); toast('Moved to archive 🗄️');
+}
+function deleteTask(){
+  if(deleteArm!=='task'){ deleteArm='task';
+    document.getElementById('taskDelRow').innerHTML = `<button class="del" onclick="deleteTask()">Sure? Tap again to delete</button>`;
+    return;
+  }
+  data.tasks = data.tasks.filter(x=>x.id!==editTaskId);
+  persist(); closeSheets(); render(); toast('Deleted');
+}
+
+function showSheet(id){
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById(id).classList.add('show');
+}
+function closeSheets(){
+  document.getElementById('overlay').classList.remove('show');
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'),1800);
+}
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+load();
+</script>
+</body>
+</html>
