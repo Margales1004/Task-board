@@ -176,18 +176,27 @@ class _FocusScreenState extends State<FocusScreen>
 
   void _finish() {
     _timer?.cancel();
-    Chime.alert(); // sound + vibration (foreground)
+    // If the timer ran out while the app was backgrounded, the periodic tick
+    // was frozen and we only notice now — overshooting the deadline by a lot.
+    // In that case finalize quietly (no alarm on re-entry); only ring when the
+    // countdown actually hits zero while the screen is in front of the user.
+    final d = _deadline;
+    final overshootMs = d == null
+        ? 0
+        : DateTime.now().millisecondsSinceEpoch - d.millisecondsSinceEpoch;
+    final silent = overshootMs > 1500;
+
     final wasWork = !_isBreak;
     if (wasWork) {
       context.read<AppState>().addPomodoro(widget.taskId);
     }
-    setState(() {
-      _running = false;
-      _deadline = null;
-      _remaining = _total;
-    });
+    if (!silent) Chime.alert(); // sound + vibration (foreground completion only)
+
     if (!mounted) return;
-    if (wasWork) {
+    if (silent) {
+      Toast.show(context, 'Focus session finished ✓');
+      _setMode(false); // clear the session, back to a fresh focus timer
+    } else if (wasWork) {
       Toast.show(context, 'Focus session done 🎉 Take a short break');
       _setMode(true); // offer a break next
     } else {
