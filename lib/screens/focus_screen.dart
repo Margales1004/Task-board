@@ -4,12 +4,17 @@ import 'package:provider/provider.dart';
 
 import '../app_state.dart';
 import '../chime.dart';
+import '../reminders.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/progress_ring.dart';
 
 const _focusPresets = <int>[10, 15, 20, 25, 30, 45, 50, 60];
 const _breakPresets = <int>[5, 10, 15, 20];
+
+/// Reserved notification id for the focus-timer end alert (won't collide with
+/// task reminder ids, which are FNV hashes of task-id strings).
+const int _kFocusNotifId = 2147483646;
 
 /// Full-screen Pomodoro focus timer for a single task.
 class FocusScreen extends StatefulWidget {
@@ -50,6 +55,7 @@ class _FocusScreenState extends State<FocusScreen>
         _deadline = DateTime.fromMillisecondsSinceEpoch(app.focusEndMs!);
         _remaining = rem.clamp(0, _total);
         _startTimer();
+        _scheduleEnd(_deadline!); // (re)arm the end alert (id replaces)
       } else if (!app.focusRunning && (app.focusPausedRemaining ?? 0) > 0) {
         _remaining = app.focusPausedRemaining!.clamp(0, _total);
       } else {
@@ -66,6 +72,19 @@ class _FocusScreenState extends State<FocusScreen>
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 250), (_) => _tick());
   }
+
+  /// Schedule an OS notification at the deadline so the timer still alerts when
+  /// the screen is off (no-op in a plain browser). Same id → replaces.
+  void _scheduleEnd(DateTime deadline) {
+    Reminders.schedule(
+      id: _kFocusNotifId,
+      title: _isBreak ? "Break's over" : 'Focus session complete',
+      body: widget.taskName,
+      when: deadline,
+    );
+  }
+
+  void _cancelEnd() => Reminders.cancel(_kFocusNotifId);
 
   void _chooseDuration() {
     final presets = _isBreak ? _breakPresets : _focusPresets;
@@ -85,6 +104,7 @@ class _FocusScreenState extends State<FocusScreen>
             app.setFocusDurations(focus: min);
           }
           app.focusClear();
+          _cancelEnd();
           setState(() {
             if (_isBreak) {
               _breakMin = min;
@@ -130,6 +150,7 @@ class _FocusScreenState extends State<FocusScreen>
 
   void _setMode(bool isBreak) {
     _timer?.cancel();
+    _cancelEnd();
     context.read<AppState>().focusClear();
     setState(() {
       _isBreak = isBreak;
@@ -145,6 +166,7 @@ class _FocusScreenState extends State<FocusScreen>
       final ms = _deadline?.difference(DateTime.now()).inMilliseconds ?? 0;
       final rem = ms <= 0 ? 0 : (ms / 1000).ceil().clamp(0, _total);
       _timer?.cancel();
+      _cancelEnd();
       context.read<AppState>().focusPause(rem);
       setState(() {
         _remaining = rem;
@@ -157,6 +179,7 @@ class _FocusScreenState extends State<FocusScreen>
     final deadline = DateTime.now().add(Duration(seconds: _remaining));
     context.read<AppState>().focusStart(
         taskId: widget.taskId, isBreak: _isBreak, deadline: deadline);
+    _scheduleEnd(deadline);
     setState(() {
       _running = true;
       _deadline = deadline;
@@ -166,6 +189,7 @@ class _FocusScreenState extends State<FocusScreen>
 
   void _reset() {
     _timer?.cancel();
+    _cancelEnd();
     context.read<AppState>().focusClear();
     setState(() {
       _remaining = _total;
@@ -176,6 +200,7 @@ class _FocusScreenState extends State<FocusScreen>
 
   void _finish() {
     _timer?.cancel();
+    _cancelEnd(); // avoid a duplicate/late OS notification
     // If the timer ran out while the app was backgrounded, the periodic tick
     // was frozen and we only notice now — overshooting the deadline by a lot.
     // In that case finalize quietly (no alarm on re-entry); only ring when the

@@ -183,11 +183,14 @@ class AppState extends ChangeNotifier {
     return h & 0x7fffffff;
   }
 
-  /// Re-sync all scheduled OS notifications with the current data.
+  /// Re-sync scheduled task-reminder notifications with the current data.
+  ///
+  /// Cancels each task's own reminder id (rather than cancelAll) so unrelated
+  /// notifications — e.g. the focus-timer end alert — are left untouched.
   void _syncReminders() {
-    Reminders.cancelAll();
     final now = DateTime.now();
     for (final t in tasks) {
+      Reminders.cancel(_notifId(t.id));
       if (t.archived || t.status == TaskStatus.done || t.remindAt == null) {
         continue;
       }
@@ -361,6 +364,9 @@ class AppState extends ChangeNotifier {
   }
 
   void deleteBoard(String id) {
+    for (final t in tasks.where((t) => t.boardId == id)) {
+      Reminders.cancel(_notifId(t.id));
+    }
     tasks.removeWhere((t) => t.boardId == id);
     boards.removeWhere((b) => b.id == id);
     if (currentBoardId == id) currentBoardId = null;
@@ -473,6 +479,7 @@ class AppState extends ChangeNotifier {
   }
 
   void deleteTask(String id) {
+    Reminders.cancel(_notifId(id));
     tasks.removeWhere((t) => t.id == id);
     _save();
   }
