@@ -17,21 +17,50 @@ class FocusScreen extends StatefulWidget {
   State<FocusScreen> createState() => _FocusScreenState();
 }
 
-class _FocusScreenState extends State<FocusScreen> {
+class _FocusScreenState extends State<FocusScreen>
+    with WidgetsBindingObserver {
   static const _workSeconds = 25 * 60;
   static const _breakSeconds = 5 * 60;
 
   bool _isBreak = false;
-  int _remaining = _workSeconds;
+  int _remaining = _workSeconds; // seconds shown on the clock
   bool _running = false;
+  DateTime? _deadline; // real wall-clock end time while running
   Timer? _timer;
 
   int get _total => _isBreak ? _breakSeconds : _workSeconds;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Timers are throttled/paused while the app is backgrounded or the screen
+    // is off, so re-sync to the real clock the moment we come back.
+    if (state == AppLifecycleState.resumed && _running) _tick();
+  }
+
+  /// Recompute the displayed time from the wall clock (not from tick counts),
+  /// so elapsed time stays correct even if ticks were throttled.
+  void _tick() {
+    final d = _deadline;
+    if (d == null) return;
+    final ms = d.difference(DateTime.now()).inMilliseconds;
+    if (ms <= 0) {
+      _finish();
+    } else {
+      setState(() => _remaining = (ms / 1000).ceil().clamp(0, _total));
+    }
   }
 
   void _setMode(bool isBreak) {
@@ -40,23 +69,28 @@ class _FocusScreenState extends State<FocusScreen> {
       _isBreak = isBreak;
       _remaining = _total;
       _running = false;
+      _deadline = null;
     });
   }
 
   void _toggleRun() {
     if (_running) {
+      // Pause: freeze the remaining time from the real clock.
+      final ms = _deadline?.difference(DateTime.now()).inMilliseconds ?? 0;
       _timer?.cancel();
-      setState(() => _running = false);
+      setState(() {
+        _remaining = ms <= 0 ? 0 : (ms / 1000).ceil().clamp(0, _total);
+        _running = false;
+        _deadline = null;
+      });
       return;
     }
-    setState(() => _running = true);
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (_remaining <= 1) {
-        _finish();
-      } else {
-        setState(() => _remaining--);
-      }
+    setState(() {
+      _running = true;
+      _deadline = DateTime.now().add(Duration(seconds: _remaining));
     });
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(milliseconds: 250), (_) => _tick());
   }
 
   void _reset() {
@@ -64,6 +98,7 @@ class _FocusScreenState extends State<FocusScreen> {
     setState(() {
       _remaining = _total;
       _running = false;
+      _deadline = null;
     });
   }
 
@@ -75,6 +110,7 @@ class _FocusScreenState extends State<FocusScreen> {
     }
     setState(() {
       _running = false;
+      _deadline = null;
       _remaining = _total;
     });
     if (!mounted) return;
