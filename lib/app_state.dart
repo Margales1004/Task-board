@@ -34,6 +34,8 @@ class AppState extends ChangeNotifier {
 
   // ---- settings ----
   int dailyGoal = 3; // target completions per day
+  int focusMinutes = 25; // Pomodoro focus length
+  int breakMinutes = 5; // Pomodoro break length
 
   // ---- navigation / view state ----
   AppTab tab = AppTab.today;
@@ -65,6 +67,10 @@ class AppState extends ChangeNotifier {
         final settings = decoded['settings'] as Map<String, dynamic>?;
         if (settings != null) {
           dailyGoal = (settings['dailyGoal'] as num?)?.toInt() ?? dailyGoal;
+          focusMinutes =
+              (settings['focusMinutes'] as num?)?.toInt() ?? focusMinutes;
+          breakMinutes =
+              (settings['breakMinutes'] as num?)?.toInt() ?? breakMinutes;
         }
       }
     } catch (_) {
@@ -87,7 +93,11 @@ class AppState extends ChangeNotifier {
         jsonEncode({
           'boards': boards.map((b) => b.toJson()).toList(),
           'tasks': tasks.map((t) => t.toJson()).toList(),
-          'settings': {'dailyGoal': dailyGoal},
+          'settings': {
+            'dailyGoal': dailyGoal,
+            'focusMinutes': focusMinutes,
+            'breakMinutes': breakMinutes,
+          },
         }),
       );
     } catch (_) {
@@ -229,6 +239,12 @@ class AppState extends ChangeNotifier {
 
   void setDailyGoal(int n) {
     dailyGoal = n.clamp(1, 20);
+    _save();
+  }
+
+  void setFocusDurations({int? focus, int? brk}) {
+    if (focus != null) focusMinutes = focus.clamp(1, 180);
+    if (brk != null) breakMinutes = brk.clamp(1, 60);
     _save();
   }
 

@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
+import '../chime.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/progress_ring.dart';
+
+const _focusPresets = <int>[10, 15, 20, 25, 30, 45, 50, 60];
+const _breakPresets = <int>[5, 10, 15, 20];
 
 /// Full-screen Pomodoro focus timer for a single task.
 class FocusScreen extends StatefulWidget {
@@ -19,21 +23,58 @@ class FocusScreen extends StatefulWidget {
 
 class _FocusScreenState extends State<FocusScreen>
     with WidgetsBindingObserver {
-  static const _workSeconds = 25 * 60;
-  static const _breakSeconds = 5 * 60;
+  int _workMin = 25;
+  int _breakMin = 5;
 
   bool _isBreak = false;
-  int _remaining = _workSeconds; // seconds shown on the clock
+  int _remaining = 25 * 60; // seconds shown on the clock
   bool _running = false;
   DateTime? _deadline; // real wall-clock end time while running
   Timer? _timer;
 
-  int get _total => _isBreak ? _breakSeconds : _workSeconds;
+  int get _total => (_isBreak ? _breakMin : _workMin) * 60;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final app = context.read<AppState>();
+    _workMin = app.focusMinutes;
+    _breakMin = app.breakMinutes;
+    _remaining = _total;
+  }
+
+  void _chooseDuration() {
+    final presets = _isBreak ? _breakPresets : _focusPresets;
+    final current = _isBreak ? _breakMin : _workMin;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _DurationSheet(
+        title: _isBreak ? 'Break length' : 'Focus length',
+        presets: presets,
+        current: current,
+        onPick: (min) {
+          final app = context.read<AppState>();
+          if (_isBreak) {
+            app.setFocusDurations(brk: min);
+          } else {
+            app.setFocusDurations(focus: min);
+          }
+          setState(() {
+            if (_isBreak) {
+              _breakMin = min;
+            } else {
+              _workMin = min;
+            }
+            _timer?.cancel();
+            _running = false;
+            _deadline = null;
+            _remaining = _total;
+          });
+        },
+      ),
+    );
   }
 
   @override
@@ -85,6 +126,7 @@ class _FocusScreenState extends State<FocusScreen>
       });
       return;
     }
+    Chime.prime(); // unlock audio within the tap gesture
     setState(() {
       _running = true;
       _deadline = DateTime.now().add(Duration(seconds: _remaining));
@@ -104,6 +146,7 @@ class _FocusScreenState extends State<FocusScreen>
 
   void _finish() {
     _timer?.cancel();
+    Chime.alert(); // sound + vibration (foreground)
     final wasWork = !_isBreak;
     if (wasWork) {
       context.read<AppState>().addPomodoro(widget.taskId);
@@ -147,7 +190,36 @@ class _FocusScreenState extends State<FocusScreen>
           child: Column(
             children: [
               // Work / Break switch
-              _ModeSwitch(isBreak: _isBreak, onChanged: _setMode),
+              _ModeSwitch(
+                isBreak: _isBreak,
+                workMin: _workMin,
+                breakMin: _breakMin,
+                onChanged: _setMode,
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: _running ? null : _chooseDuration,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(99),
+                    boxShadow: kCardShadow,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('${_isBreak ? _breakMin : _workMin} min',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, color: AppColors.ink)),
+                      const SizedBox(width: 4),
+                      Icon(_running ? Icons.lock_outline : Icons.expand_more,
+                          size: 18, color: AppColors.muted),
+                    ],
+                  ),
+                ),
+              ),
               const Spacer(),
               Text(
                 widget.taskName,
@@ -196,8 +268,15 @@ class _FocusScreenState extends State<FocusScreen>
 
 class _ModeSwitch extends StatelessWidget {
   final bool isBreak;
+  final int workMin;
+  final int breakMin;
   final ValueChanged<bool> onChanged;
-  const _ModeSwitch({required this.isBreak, required this.onChanged});
+  const _ModeSwitch({
+    required this.isBreak,
+    required this.workMin,
+    required this.breakMin,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -229,7 +308,87 @@ class _ModeSwitch extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: kCardShadow,
       ),
-      child: Row(children: [seg('Focus · 25', false), seg('Break · 5', true)]),
+      child: Row(children: [
+        seg('Focus · $workMin', false),
+        seg('Break · $breakMin', true),
+      ]),
+    );
+  }
+}
+
+class _DurationSheet extends StatelessWidget {
+  final String title;
+  final List<int> presets;
+  final int current;
+  final ValueChanged<int> onPick;
+  const _DurationSheet({
+    required this.title,
+    required this.presets,
+    required this.current,
+    required this.onPick,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                      color: AppColors.line,
+                      borderRadius: BorderRadius.circular(99)),
+                ),
+              ),
+              Text(title, style: displayStyle(size: 21)),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: presets.map((m) {
+                  final sel = m == current;
+                  return GestureDetector(
+                    onTap: () {
+                      onPick(m);
+                      Navigator.pop(context);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: sel ? AppColors.ink : AppColors.bg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: sel ? AppColors.ink : AppColors.line,
+                            width: 1.5),
+                      ),
+                      child: Text('$m min',
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: sel ? Colors.white : AppColors.ink)),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
