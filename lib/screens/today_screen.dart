@@ -8,6 +8,7 @@ import '../models.dart';
 import '../reminders.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/ideas_sheet.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/task_sheet.dart';
 import 'focus_screen.dart';
@@ -153,6 +154,31 @@ class TodayScreen extends StatelessWidget {
                 : 'Nothing due today. Enjoy it — or pull something forward.',
           ),
         ],
+
+        const SizedBox(height: 14),
+        GestureDetector(
+          onTap: () => showDailyIdeasSheet(context),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: AppColors.line, width: 1.5),
+            ),
+            child: const Row(
+              children: [
+                Text('✨', style: TextStyle(fontSize: 20)),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text('Need ideas? Get suggestions for today',
+                      style: TextStyle(
+                          fontSize: 14.5, fontWeight: FontWeight.w600)),
+                ),
+                Icon(Icons.chevron_right, color: AppColors.muted),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

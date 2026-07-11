@@ -44,6 +44,10 @@ class AppState extends ChangeNotifier {
   // Achievement titles unlocked since the last UI consume (shown as a toast).
   final List<String> pendingUnlocks = [];
 
+  // Daily "ideas for today" popup: last day shown + a pending flag for the UI.
+  String? lastSuggestionsDay;
+  bool pendingDailySuggestions = false;
+
   // ---- active focus session (persisted so it survives navigation/reloads) ----
   String? focusTaskId;
   bool focusIsBreak = false;
@@ -124,6 +128,7 @@ class AppState extends ChangeNotifier {
           seenAchievements =
               (settings['seenAchievements'] as List?)?.cast<String>().toList() ??
                   seenAchievements;
+          lastSuggestionsDay = settings['lastSuggestionsDay'] as String?;
         }
         final focus = decoded['focus'] as Map<String, dynamic>?;
         if (focus != null) {
@@ -148,6 +153,8 @@ class AppState extends ChangeNotifier {
     if (seenAchievements.isEmpty) {
       seenAchievements = earnedAchievements(this).toList();
     }
+    // First open of a new day → queue the "ideas for today" popup.
+    pendingDailySuggestions = lastSuggestionsDay != todayStr();
     _loaded = true;
     notifyListeners();
     // Ask for notification permission (native shell) and sync scheduled alerts.
@@ -172,6 +179,7 @@ class AppState extends ChangeNotifier {
             'breakMinutes': breakMinutes,
             'dailyNudges': dailyNudges,
             'seenAchievements': seenAchievements,
+            'lastSuggestionsDay': lastSuggestionsDay,
           },
           'focus': {
             'taskId': focusTaskId,
@@ -288,6 +296,32 @@ class AppState extends ChangeNotifier {
       pendingUnlocks.add(achievementById(id).title);
     }
     seenAchievements = earned.toList();
+  }
+
+  // ---------------- daily idea suggestions ----------------
+  void markSuggestionsShown() {
+    lastSuggestionsDay = todayStr();
+    pendingDailySuggestions = false;
+    _save();
+  }
+
+  /// Board to drop a suggested task into: the first board, or a new "Personal"
+  /// one if there are none yet.
+  String ensureDefaultBoard() {
+    if (boards.isNotEmpty) return boards.first.id;
+    final id = uid();
+    boards.add(Board(id: id, name: 'Personal', color: '#2E86AB'));
+    _save();
+    return id;
+  }
+
+  void addSuggestedTask(String boardId, String name) {
+    saveTask(
+      boardId: boardId,
+      name: name,
+      status: TaskStatus.todo,
+      prio: TaskPrio.normal,
+    );
   }
 
   // ---------------- derived collections ----------------

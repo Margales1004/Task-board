@@ -12,6 +12,7 @@ import 'screens/archive_screen.dart';
 import 'widgets/board_sheet.dart';
 import 'widgets/task_sheet.dart';
 import 'widgets/common.dart';
+import 'widgets/ideas_sheet.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +61,15 @@ class RootShell extends StatelessWidget {
         final items = List<String>.from(app.pendingUnlocks);
         app.pendingUnlocks.clear();
         Toast.show(context, '🏅 Unlocked: ${items.join(', ')}');
+      });
+    }
+
+    // First open of a new day → pop the "ideas for today" suggestions.
+    if (app.pendingDailySuggestions) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted || !app.pendingDailySuggestions) return;
+        app.markSuggestionsShown();
+        showDailyIdeasSheet(context);
       });
     }
 
