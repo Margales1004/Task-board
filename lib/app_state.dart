@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'achievements.dart';
 import 'models.dart';
 import 'reminders.dart';
 
@@ -36,6 +37,12 @@ class AppState extends ChangeNotifier {
   int dailyGoal = 3; // target completions per day
   int focusMinutes = 25; // Pomodoro focus length
   int breakMinutes = 5; // Pomodoro break length
+  bool dailyNudges = true; // daily reminder notifications
+
+  // Achievements already shown (so we only toast newly-earned ones).
+  List<String> seenAchievements = [];
+  // Achievement titles unlocked since the last UI consume (shown as a toast).
+  final List<String> pendingUnlocks = [];
 
   // ---- active focus session (persisted so it survives navigation/reloads) ----
   String? focusTaskId;
@@ -113,6 +120,10 @@ class AppState extends ChangeNotifier {
               (settings['focusMinutes'] as num?)?.toInt() ?? focusMinutes;
           breakMinutes =
               (settings['breakMinutes'] as num?)?.toInt() ?? breakMinutes;
+          dailyNudges = (settings['dailyNudges'] as bool?) ?? dailyNudges;
+          seenAchievements =
+              (settings['seenAchievements'] as List?)?.cast<String>().toList() ??
+                  seenAchievements;
         }
         final focus = decoded['focus'] as Map<String, dynamic>?;
         if (focus != null) {
@@ -132,12 +143,18 @@ class AppState extends ChangeNotifier {
     } catch (_) {
       // first run / corrupt data — start clean
     }
+    // Baseline achievements on first run after this update so existing progress
+    // isn't announced retroactively.
+    if (seenAchievements.isEmpty) {
+      seenAchievements = earnedAchievements(this).toList();
+    }
     _loaded = true;
     notifyListeners();
-    // Ask for notification permission (native shell) and sync scheduled reminders.
+    // Ask for notification permission (native shell) and sync scheduled alerts.
     if (Reminders.available) {
       Reminders.requestPermission();
       _syncReminders();
+      _scheduleNudges();
     }
   }
 
@@ -153,6 +170,8 @@ class AppState extends ChangeNotifier {
             'dailyGoal': dailyGoal,
             'focusMinutes': focusMinutes,
             'breakMinutes': breakMinutes,
+            'dailyNudges': dailyNudges,
+            'seenAchievements': seenAchievements,
           },
           'focus': {
             'taskId': focusTaskId,
@@ -206,6 +225,69 @@ class AppState extends ChangeNotifier {
         when: when,
       );
     }
+  }
+
+  // ---------------- daily nudges (habit triggers) ----------------
+  static const _nudgeIdBase = 2147481000; // reserved id band
+  static const _nudgeIdCount = 30;
+
+  /// Re-arm the rolling daily/weekly nudge notifications for the next 7 days.
+  void _scheduleNudges() {
+    for (var i = 0; i < _nudgeIdCount; i++) {
+      Reminders.cancel(_nudgeIdBase + i);
+    }
+    if (!dailyNudges || !Reminders.available) return;
+    final now = DateTime.now();
+    final next = doNext();
+    var id = _nudgeIdBase;
+    for (var d = 0; d < 7 && id < _nudgeIdBase + _nudgeIdCount; d++) {
+      final day = DateTime(now.year, now.month, now.day + d);
+      final morning = DateTime(day.year, day.month, day.day, 9);
+      if (morning.isAfter(now)) {
+        final body = d <= 1 && next != null
+            ? "Today's focus: ${next.name}"
+            : 'Plan your day and pick your top tasks.';
+        Reminders.schedule(
+            id: id++, title: 'Good morning ☀️', body: body, when: morning);
+      }
+      final evening = DateTime(day.year, day.month, day.day, 20);
+      if (evening.isAfter(now)) {
+        Reminders.schedule(
+            id: id++,
+            title: 'Keep your streak 🔥',
+            body: 'Finish one task before the day ends.',
+            when: evening);
+      }
+      if (day.weekday == DateTime.sunday) {
+        final sun = DateTime(day.year, day.month, day.day, 18);
+        if (sun.isAfter(now)) {
+          Reminders.schedule(
+              id: id++,
+              title: 'Your week in review 📅',
+              body: 'See what you accomplished this week.',
+              when: sun);
+        }
+      }
+    }
+  }
+
+  void setDailyNudges(bool value) {
+    dailyNudges = value;
+    _save();
+    _scheduleNudges();
+  }
+
+  // ---------------- achievements ----------------
+  /// Detect newly-earned achievements and queue them for a UI toast.
+  void _checkAchievements() {
+    final earned = earnedAchievements(this);
+    final seen = seenAchievements.toSet();
+    final fresh = earned.difference(seen);
+    if (fresh.isEmpty) return;
+    for (final id in fresh) {
+      pendingUnlocks.add(achievementById(id).title);
+    }
+    seenAchievements = earned.toList();
   }
 
   // ---------------- derived collections ----------------
@@ -317,6 +399,7 @@ class AppState extends ChangeNotifier {
     final t = taskById(id);
     if (t == null) return;
     t.pomodoros++;
+    _checkAchievements();
     _save();
   }
 
@@ -438,6 +521,7 @@ class AppState extends ChangeNotifier {
       t.status = TaskStatus.done;
       t.completedAt = todayStr();
     }
+    _checkAchievements();
     _save();
   }
 

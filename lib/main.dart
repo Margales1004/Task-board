@@ -11,6 +11,7 @@ import 'screens/stats_screen.dart';
 import 'screens/archive_screen.dart';
 import 'widgets/board_sheet.dart';
 import 'widgets/task_sheet.dart';
+import 'widgets/common.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,6 +51,16 @@ class RootShell extends StatelessWidget {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
+    }
+
+    // Surface any newly-unlocked achievements as a toast.
+    if (app.pendingUnlocks.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted || app.pendingUnlocks.isEmpty) return;
+        final items = List<String>.from(app.pendingUnlocks);
+        app.pendingUnlocks.clear();
+        Toast.show(context, '🏅 Unlocked: ${items.join(', ')}');
+      });
     }
 
     final inBoard = app.tab == AppTab.home && app.currentBoardId != null;

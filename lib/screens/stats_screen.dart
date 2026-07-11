@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../achievements.dart';
 import '../app_state.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/heatmap.dart';
 
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
@@ -122,6 +124,23 @@ class StatsScreen extends StatelessWidget {
     }
     final archCount = app.archivedTasks.length;
 
+    // best day this week (from the 7-day breakdown)
+    var bestN = 0;
+    var bestLabel = '—';
+    for (final d in days) {
+      if (d.n > bestN) {
+        bestN = d.n;
+        bestLabel = d.label;
+      }
+    }
+    // per-day completion counts for the heatmap
+    final dayCounts = <String, int>{};
+    for (final t in done) {
+      final c = t.completedAt;
+      if (c != null) dayCounts[c] = (dayCounts[c] ?? 0) + 1;
+    }
+    final earned = earnedAchievements(app);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 150),
       children: [
@@ -222,6 +241,27 @@ class StatsScreen extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        // this week
+        _Panel(
+          title: 'This week',
+          child: Row(
+            children: [
+              _MiniStat(value: '$weekDone', label: 'completed'),
+              _MiniStat(value: bestLabel, label: 'best day'),
+              _MiniStat(value: '${app.currentStreak()}', label: 'day streak'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // activity heatmap
+        _Panel(title: 'Activity', child: Heatmap(counts: dayCounts)),
+        const SizedBox(height: 12),
+        // achievements
+        _Panel(
+          title: 'Achievements · ${earned.length}/${kAchievements.length}',
+          child: _AchievementsGrid(earned: earned),
+        ),
         // by board
         if (boardRows.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -308,6 +348,72 @@ class _Panel extends StatelessWidget {
           child,
         ],
       ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final String value;
+  final String label;
+  const _MiniStat({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(value, style: displayStyle(size: 26)),
+          const SizedBox(height: 2),
+          Text(label,
+              style: const TextStyle(fontSize: 12.5, color: AppColors.muted)),
+        ],
+      ),
+    );
+  }
+}
+
+class _AchievementsGrid extends StatelessWidget {
+  final Set<String> earned;
+  const _AchievementsGrid({required this.earned});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: kAchievements.map((a) {
+        final got = earned.contains(a.id);
+        return Container(
+          width: 96,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          decoration: BoxDecoration(
+            color: got ? const Color(0xFFEAF6EC) : AppColors.bg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: got ? const Color(0xFF9FCBA6) : AppColors.line,
+                width: 1.5),
+          ),
+          child: Column(
+            children: [
+              Opacity(
+                opacity: got ? 1 : 0.35,
+                child: Text(a.emoji, style: const TextStyle(fontSize: 24)),
+              ),
+              const SizedBox(height: 6),
+              Text(a.title,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 11.5,
+                      height: 1.2,
+                      fontWeight: FontWeight.w600,
+                      color: got ? AppColors.ink : AppColors.muted)),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../app_state.dart';
 import '../models.dart';
+import '../reminders.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/progress_ring.dart';
@@ -36,13 +37,30 @@ class TodayScreen extends StatelessWidget {
         // header
         Padding(
           padding: const EdgeInsets.fromLTRB(2, 26, 2, 6),
-          child: Column(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(DateFormat('EEEE, d MMMM').format(now),
-                  style: const TextStyle(fontSize: 13, color: AppColors.muted)),
-              const SizedBox(height: 2),
-              Text(greeting, style: displayStyle(size: 30)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(DateFormat('EEEE, d MMMM').format(now),
+                        style: const TextStyle(
+                            fontSize: 13, color: AppColors.muted)),
+                    const SizedBox(height: 2),
+                    Text(greeting, style: displayStyle(size: 30)),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => showModalBottomSheet(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => const _SettingsSheet(),
+                ),
+                icon: const Icon(Icons.settings_outlined,
+                    color: AppColors.muted),
+              ),
             ],
           ),
         ),
@@ -428,6 +446,85 @@ class _StepBtn extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: Icon(icon, color: AppColors.ink),
+      ),
+    );
+  }
+}
+
+class _SettingsSheet extends StatelessWidget {
+  const _SettingsSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.watch<AppState>();
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                      color: AppColors.line,
+                      borderRadius: BorderRadius.circular(99)),
+                ),
+              ),
+              Text('Settings', style: displayStyle(size: 21)),
+              const SizedBox(height: 16),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Daily reminders',
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w600)),
+                          Text('Morning & evening nudges to keep your streak',
+                              style: TextStyle(
+                                  fontSize: 12.5, color: AppColors.muted)),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: app.dailyNudges,
+                      activeThumbColor: Colors.white,
+                      activeTrackColor: AppColors.ink,
+                      onChanged: (v) => app.setDailyNudges(v),
+                    ),
+                  ],
+                ),
+              ),
+              if (!Reminders.available)
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Text(
+                    'Reminders arrive in the installed app.',
+                    style: TextStyle(fontSize: 12.5, color: AppColors.muted),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
