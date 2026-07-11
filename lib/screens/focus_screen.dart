@@ -41,7 +41,30 @@ class _FocusScreenState extends State<FocusScreen>
     final app = context.read<AppState>();
     _workMin = app.focusMinutes;
     _breakMin = app.breakMinutes;
-    _remaining = _total;
+    // Restore a persisted session for this task (survives reload/navigation).
+    if (app.focusTaskId == widget.taskId && app.hasActiveFocus) {
+      _isBreak = app.focusIsBreak;
+      final rem = app.focusRemainingSeconds();
+      if (app.focusRunning && rem > 0) {
+        _running = true;
+        _deadline = DateTime.fromMillisecondsSinceEpoch(app.focusEndMs!);
+        _remaining = rem.clamp(0, _total);
+        _startTimer();
+      } else if (!app.focusRunning && (app.focusPausedRemaining ?? 0) > 0) {
+        _remaining = app.focusPausedRemaining!.clamp(0, _total);
+      } else {
+        _remaining = _total;
+        WidgetsBinding.instance.addPostFrameCallback(
+            (_) => context.read<AppState>().focusClear());
+      }
+    } else {
+      _remaining = _total;
+    }
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(milliseconds: 250), (_) => _tick());
   }
 
   void _chooseDuration() {
@@ -61,6 +84,7 @@ class _FocusScreenState extends State<FocusScreen>
           } else {
             app.setFocusDurations(focus: min);
           }
+          app.focusClear();
           setState(() {
             if (_isBreak) {
               _breakMin = min;
@@ -106,6 +130,7 @@ class _FocusScreenState extends State<FocusScreen>
 
   void _setMode(bool isBreak) {
     _timer?.cancel();
+    context.read<AppState>().focusClear();
     setState(() {
       _isBreak = isBreak;
       _remaining = _total;
@@ -118,25 +143,30 @@ class _FocusScreenState extends State<FocusScreen>
     if (_running) {
       // Pause: freeze the remaining time from the real clock.
       final ms = _deadline?.difference(DateTime.now()).inMilliseconds ?? 0;
+      final rem = ms <= 0 ? 0 : (ms / 1000).ceil().clamp(0, _total);
       _timer?.cancel();
+      context.read<AppState>().focusPause(rem);
       setState(() {
-        _remaining = ms <= 0 ? 0 : (ms / 1000).ceil().clamp(0, _total);
+        _remaining = rem;
         _running = false;
         _deadline = null;
       });
       return;
     }
     Chime.prime(); // unlock audio within the tap gesture
+    final deadline = DateTime.now().add(Duration(seconds: _remaining));
+    context.read<AppState>().focusStart(
+        taskId: widget.taskId, isBreak: _isBreak, deadline: deadline);
     setState(() {
       _running = true;
-      _deadline = DateTime.now().add(Duration(seconds: _remaining));
+      _deadline = deadline;
     });
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(milliseconds: 250), (_) => _tick());
+    _startTimer();
   }
 
   void _reset() {
     _timer?.cancel();
+    context.read<AppState>().focusClear();
     setState(() {
       _remaining = _total;
       _running = false;

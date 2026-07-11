@@ -37,6 +37,48 @@ class AppState extends ChangeNotifier {
   int focusMinutes = 25; // Pomodoro focus length
   int breakMinutes = 5; // Pomodoro break length
 
+  // ---- active focus session (persisted so it survives navigation/reloads) ----
+  String? focusTaskId;
+  bool focusIsBreak = false;
+  int? focusEndMs; // wall-clock deadline (ms) while running
+  int? focusPausedRemaining; // seconds remaining while paused
+
+  bool get hasActiveFocus =>
+      focusTaskId != null && (focusEndMs != null || focusPausedRemaining != null);
+
+  bool get focusRunning => focusEndMs != null;
+
+  int focusRemainingSeconds() {
+    if (focusEndMs != null) {
+      final ms = focusEndMs! - DateTime.now().millisecondsSinceEpoch;
+      return ms <= 0 ? 0 : (ms / 1000).ceil();
+    }
+    return focusPausedRemaining ?? 0;
+  }
+
+  void focusStart(
+      {required String taskId, required bool isBreak, required DateTime deadline}) {
+    focusTaskId = taskId;
+    focusIsBreak = isBreak;
+    focusEndMs = deadline.millisecondsSinceEpoch;
+    focusPausedRemaining = null;
+    _save();
+  }
+
+  void focusPause(int remainingSeconds) {
+    focusPausedRemaining = remainingSeconds;
+    focusEndMs = null;
+    _save();
+  }
+
+  void focusClear() {
+    focusTaskId = null;
+    focusEndMs = null;
+    focusPausedRemaining = null;
+    focusIsBreak = false;
+    _save();
+  }
+
   // ---- navigation / view state ----
   AppTab tab = AppTab.today;
   String? currentBoardId;
@@ -72,6 +114,20 @@ class AppState extends ChangeNotifier {
           breakMinutes =
               (settings['breakMinutes'] as num?)?.toInt() ?? breakMinutes;
         }
+        final focus = decoded['focus'] as Map<String, dynamic>?;
+        if (focus != null) {
+          focusTaskId = focus['taskId'] as String?;
+          focusIsBreak = (focus['isBreak'] as bool?) ?? false;
+          focusEndMs = (focus['endMs'] as num?)?.toInt();
+          focusPausedRemaining = (focus['paused'] as num?)?.toInt();
+          // Drop a running session whose deadline already passed while closed.
+          if (focusEndMs != null &&
+              focusEndMs! <= DateTime.now().millisecondsSinceEpoch) {
+            focusTaskId = null;
+            focusEndMs = null;
+            focusPausedRemaining = null;
+          }
+        }
       }
     } catch (_) {
       // first run / corrupt data — start clean
@@ -97,6 +153,12 @@ class AppState extends ChangeNotifier {
             'dailyGoal': dailyGoal,
             'focusMinutes': focusMinutes,
             'breakMinutes': breakMinutes,
+          },
+          'focus': {
+            'taskId': focusTaskId,
+            'isBreak': focusIsBreak,
+            'endMs': focusEndMs,
+            'paused': focusPausedRemaining,
           },
         }),
       );

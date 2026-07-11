@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -45,6 +46,8 @@ class TodayScreen extends StatelessWidget {
             ],
           ),
         ),
+
+        const _FocusBanner(),
 
         const SizedBox(height: 10),
         // goal ring + streak
@@ -425,6 +428,99 @@ class _StepBtn extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: Icon(icon, color: AppColors.ink),
+      ),
+    );
+  }
+}
+
+/// Shows a live "focus in progress" card whenever a session is active, so it
+/// survives leaving the timer screen or a WebView reload and can be resumed.
+class _FocusBanner extends StatefulWidget {
+  const _FocusBanner();
+
+  @override
+  State<_FocusBanner> createState() => _FocusBannerState();
+}
+
+class _FocusBannerState extends State<_FocusBanner> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.watch<AppState>();
+    if (!app.hasActiveFocus) return const SizedBox.shrink();
+    final task = app.taskById(app.focusTaskId!);
+    if (task == null) return const SizedBox.shrink();
+    final rem = app.focusRemainingSeconds();
+    if (app.focusRunning && rem <= 0) return const SizedBox.shrink();
+    final mm = (rem ~/ 60).toString().padLeft(2, '0');
+    final ss = (rem % 60).toString().padLeft(2, '0');
+    final status = app.focusRunning ? '$mm:$ss left' : 'Paused · $mm:$ss';
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => FocusScreen(taskId: task.id, taskName: task.name),
+        )),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.ink,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            boxShadow: kCardShadow,
+          ),
+          child: Row(
+            children: [
+              const Text('⏱️', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Focus: ${task.name}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(status,
+                        style: const TextStyle(
+                            color: Color(0xFFB6C0CB), fontSize: 13)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: const Text('Resume',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
