@@ -9,11 +9,14 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import 'shell_notifications.dart';
+
 /// The hosted web app. Update only if the GitHub Pages URL changes.
 const String kAppUrl = 'https://margales1004.github.io/Task-board/';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  ShellNotifications.init(); // set up the notifications channel early
   runApp(const ShellApp());
 }
 
@@ -48,6 +51,15 @@ class _WebShellState extends State<WebShell> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0xFFF3F5F8))
+      // The web app posts reminder requests here; the native side schedules
+      // real OS notifications. Injecting this makes window.Notifier exist, so
+      // the web app knows reminders are available.
+      ..addJavaScriptChannel(
+        'Notifier',
+        onMessageReceived: (JavaScriptMessage message) {
+          ShellNotifications.handleMessage(message.message);
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) {
