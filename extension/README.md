@@ -54,10 +54,16 @@ there, copy the **pairing code** it shows, and tap **Save**.
 
 ## Using it
 
-- **Select text** on any page → right-click → **Add to My Boards**. The
-  selection becomes the task name; the page URL is saved in the note.
-- **No selection?** Right-click → **Add to My Boards** (uses the page title), or
-  click the toolbar icon to capture the current page.
+Two ways to capture — pick whichever fits the moment:
+
+- **Instant** — select text → right-click → **Add to My Boards** (or click the
+  toolbar icon to grab the current page). Sends immediately: the selection is
+  the task name, the page URL goes in the note.
+- **Edit first** — right-click → **Add to My Boards (edit first…)**, or press
+  the keyboard shortcut (**Alt+Shift+Q** by default). A small window opens
+  prefilled with the selection so you can tweak the title/note before adding.
+
+Change the shortcut anytime at `chrome://extensions/shortcuts`.
 
 ## Notes
 
