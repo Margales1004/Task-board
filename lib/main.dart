@@ -11,8 +11,12 @@ import 'screens/stats_screen.dart';
 import 'screens/archive_screen.dart';
 import 'widgets/board_sheet.dart';
 import 'widgets/task_sheet.dart';
+import 'widgets/coach_sheet.dart';
 import 'widgets/common.dart';
 import 'widgets/ideas_sheet.dart';
+
+// Guards against scheduling the coach pop-up more than once per frame burst.
+bool _coachScheduled = false;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,6 +75,19 @@ class RootShell extends StatelessWidget {
         app.markSuggestionsShown();
         showDailyIdeasSheet(context);
       });
+    } else if (!_coachScheduled) {
+      // Otherwise, if a task has been overdue by more than a day, gently ask
+      // what's blocking it (the procrastination coach).
+      final stuck = app.taskNeedingCoach();
+      if (stuck != null) {
+        _coachScheduled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _coachScheduled = false;
+          if (!context.mounted) return;
+          app.markTaskCoached(stuck.id);
+          showCoachSheet(context, stuck.id);
+        });
+      }
     }
 
     final inBoard = app.tab == AppTab.home && app.currentBoardId != null;

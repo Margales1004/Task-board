@@ -88,6 +88,7 @@ class Task {
   List<SubTask> subtasks; // checklist items
   int deferCount; // how many times this task has been postponed
   String? blockReason; // last "why am I stuck?" answer (procrastination coach)
+  String? coachedOn; // yyyy-MM-dd the coach last auto-popped for this task
 
   Task({
     required this.id,
@@ -107,6 +108,7 @@ class Task {
     List<SubTask>? subtasks,
     this.deferCount = 0,
     this.blockReason,
+    this.coachedOn,
   }) : subtasks = subtasks ?? [];
 
   factory Task.fromJson(Map<String, dynamic> j) => Task(
@@ -130,6 +132,7 @@ class Task {
             [],
         deferCount: (j['deferCount'] as num?)?.toInt() ?? 0,
         blockReason: j['blockReason'] as String?,
+        coachedOn: j['coachedOn'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -150,5 +153,6 @@ class Task {
         'subtasks': subtasks.map((s) => s.toJson()).toList(),
         'deferCount': deferCount,
         'blockReason': blockReason,
+        'coachedOn': coachedOn,
       };
 }

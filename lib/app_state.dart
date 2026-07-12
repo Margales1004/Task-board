@@ -815,6 +815,35 @@ class AppState extends ChangeNotifier {
     _save();
   }
 
+  /// A task that's been overdue by more than a day and still isn't done — the
+  /// coach should gently ask what's blocking it. Returns the most overdue such
+  /// task not already coached today, or null. Drives the automatic pop-up.
+  Task? taskNeedingCoach() {
+    if (!procrastinationCoach) return null;
+    final cutoff = iso(DateTime.now().subtract(const Duration(days: 1)));
+    final candidates = activeTasks
+        .where((t) =>
+            t.status != TaskStatus.done &&
+            t.status != TaskStatus.waiting &&
+            t.date != null &&
+            t.date!.isNotEmpty &&
+            t.date!.compareTo(cutoff) <= 0 && // due yesterday or earlier
+            t.coachedOn != todayStr())
+        .toList();
+    if (candidates.isEmpty) return null;
+    candidates.sort((a, b) => (a.date ?? '').compareTo(b.date ?? ''));
+    return candidates.first; // the oldest overdue one
+  }
+
+  /// Remember that the coach popped for this task today (so it won't nag again
+  /// until tomorrow if it's still overdue).
+  void markTaskCoached(String id) {
+    final t = taskById(id);
+    if (t == null) return;
+    t.coachedOn = todayStr();
+    _save();
+  }
+
   /// Record the chosen "why am I stuck?" answer (for Insights) and clear the
   /// postpone counter so the coach doesn't immediately re-trigger.
   void recordBlockReason(String id, String reasonKey) {
