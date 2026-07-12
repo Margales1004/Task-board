@@ -548,6 +548,8 @@ class AppState extends ChangeNotifier {
     required String prio,
     bool frog = false,
     String? remindAt,
+    String? repeat,
+    List<SubTask>? subtasks,
   }) {
     final completedAt = status == TaskStatus.done
         ? (id != null && taskById(id)?.completedAt != null
@@ -573,6 +575,8 @@ class AppState extends ChangeNotifier {
       t.completedAt = completedAt;
       t.frog = frog;
       t.remindAt = remindAt;
+      t.repeat = repeat;
+      if (subtasks != null) t.subtasks = subtasks;
     } else {
       tasks.add(Task(
         id: uid(),
@@ -586,9 +590,36 @@ class AppState extends ChangeNotifier {
         completedAt: completedAt,
         frog: frog,
         remindAt: remindAt,
+        repeat: repeat,
+        subtasks: subtasks,
       ));
     }
     _save();
+  }
+
+  /// Advance a date one recurrence step past today, so the next occurrence is
+  /// never already overdue. Bases off [from] (or today if null).
+  String _nextOccurrence(String? from, String repeat) {
+    final today = DateTime.now();
+    var d = from != null && from.isNotEmpty
+        ? DateTime.parse('${from}T00:00:00')
+        : DateTime(today.year, today.month, today.day);
+    final floor = DateTime(today.year, today.month, today.day);
+    // Step forward until strictly after today.
+    do {
+      switch (repeat) {
+        case TaskRepeat.weekly:
+          d = d.add(const Duration(days: 7));
+          break;
+        case TaskRepeat.monthly:
+          d = DateTime(d.year, d.month + 1, d.day);
+          break;
+        case TaskRepeat.daily:
+        default:
+          d = d.add(const Duration(days: 1));
+      }
+    } while (!d.isAfter(floor));
+    return iso(d);
   }
 
   void toggleDone(String id) {
@@ -600,8 +631,65 @@ class AppState extends ChangeNotifier {
     } else {
       t.status = TaskStatus.done;
       t.completedAt = todayStr();
+      // Recurring task: spawn the next occurrence so the habit rolls forward.
+      // The completed instance stays done (preserving streak/stats history).
+      if (t.repeat != null && !t.archived) {
+        final nextDate = _nextOccurrence(t.date, t.repeat!);
+        String? nextRemind;
+        if (t.remindAt != null) {
+          final old = DateTime.tryParse(t.remindAt!);
+          if (old != null) {
+            final nd = DateTime.parse('${nextDate}T00:00:00');
+            nextRemind = DateTime(
+                    nd.year, nd.month, nd.day, old.hour, old.minute)
+                .toIso8601String();
+          }
+        }
+        tasks.add(Task(
+          id: uid(),
+          boardId: t.boardId,
+          name: t.name,
+          date: nextDate,
+          person: t.person,
+          note: t.note,
+          prio: t.prio,
+          remindAt: nextRemind,
+          repeat: t.repeat,
+          subtasks: t.subtasks.map((s) => SubTask(title: s.title)).toList(),
+        ));
+        // The completed instance is a one-off record now.
+        t.repeat = null;
+      }
     }
     _checkAchievements();
+    _save();
+  }
+
+  /// Toggle a single checklist item on a task.
+  void toggleSubtask(String taskId, int index) {
+    final t = taskById(taskId);
+    if (t == null || index < 0 || index >= t.subtasks.length) return;
+    t.subtasks[index].done = !t.subtasks[index].done;
+    _save();
+  }
+
+  /// Move a task's due date to tomorrow (quick procrastination triage).
+  void snoozeToTomorrow(String id) {
+    final t = taskById(id);
+    if (t == null) return;
+    final tm = DateTime.now().add(const Duration(days: 1));
+    t.date = iso(tm);
+    if (t.status == TaskStatus.done) {
+      t.status = TaskStatus.todo;
+      t.completedAt = null;
+    }
+    _save();
+  }
+
+  /// Re-add a previously-deleted task (used to undo a swipe-to-delete).
+  void reinsertTask(Task t) {
+    if (taskById(t.id) != null) return;
+    tasks.add(t);
     _save();
   }
 

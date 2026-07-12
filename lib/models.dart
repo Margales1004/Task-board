@@ -31,6 +31,44 @@ class TaskPrio {
   static const high = 'high';
 }
 
+/// Recurrence values for repeating tasks (null = one-off).
+class TaskRepeat {
+  static const daily = 'daily';
+  static const weekly = 'weekly';
+  static const monthly = 'monthly';
+
+  static const all = [daily, weekly, monthly];
+
+  /// Short human label, e.g. "🔁 Daily".
+  static String label(String? r) {
+    switch (r) {
+      case daily:
+        return '🔁 Daily';
+      case weekly:
+        return '🔁 Weekly';
+      case monthly:
+        return '🔁 Monthly';
+      default:
+        return '';
+    }
+  }
+}
+
+/// A single checklist item inside a task.
+class SubTask {
+  String title;
+  bool done;
+
+  SubTask({required this.title, this.done = false});
+
+  factory SubTask.fromJson(Map<String, dynamic> j) => SubTask(
+        title: (j['title'] as String?) ?? '',
+        done: (j['done'] as bool?) ?? false,
+      );
+
+  Map<String, dynamic> toJson() => {'title': title, 'done': done};
+}
+
 class Task {
   String id;
   String boardId;
@@ -45,6 +83,8 @@ class Task {
   bool frog; // "eat the frog" — the one most-important task
   String? remindAt; // ISO 8601 local datetime for a reminder notification
   int pomodoros; // completed focus sessions
+  String? repeat; // null | daily | weekly | monthly
+  List<SubTask> subtasks; // checklist items
 
   Task({
     required this.id,
@@ -60,7 +100,9 @@ class Task {
     this.frog = false,
     this.remindAt,
     this.pomodoros = 0,
-  });
+    this.repeat,
+    List<SubTask>? subtasks,
+  }) : subtasks = subtasks ?? [];
 
   factory Task.fromJson(Map<String, dynamic> j) => Task(
         id: j['id'] as String,
@@ -76,6 +118,11 @@ class Task {
         frog: (j['frog'] as bool?) ?? false,
         remindAt: j['remindAt'] as String?,
         pomodoros: (j['pomodoros'] as num?)?.toInt() ?? 0,
+        repeat: j['repeat'] as String?,
+        subtasks: (j['subtasks'] as List?)
+                ?.map((e) => SubTask.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
       );
 
   Map<String, dynamic> toJson() => {
@@ -92,5 +139,7 @@ class Task {
         'frog': frog,
         'remindAt': remindAt,
         'pomodoros': pomodoros,
+        'repeat': repeat,
+        'subtasks': subtasks.map((s) => s.toJson()).toList(),
       };
 }

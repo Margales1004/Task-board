@@ -1,6 +1,28 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../app_state.dart';
+import '../models.dart';
 import '../theme.dart';
+
+/// Delete [task] and show an "Undo" snackbar that reinserts it if tapped.
+void deleteTaskWithUndo(BuildContext context, AppState app, Task task) {
+  app.deleteTask(task.id);
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.clearSnackBars();
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text('Deleted "${task.name}"'),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: AppColors.ink,
+      duration: const Duration(seconds: 4),
+      action: SnackBarAction(
+        label: 'Undo',
+        textColor: Colors.white,
+        onPressed: () => app.reinsertTask(task),
+      ),
+    ),
+  );
+}
 
 /// A small pill toast at the bottom of the screen (mirrors `.toast` in the HTML).
 class Toast {
@@ -163,6 +185,74 @@ class SoftCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         boxShadow: kCardShadow,
       ),
+      child: child,
+    );
+  }
+}
+
+/// Wraps a task card with swipe gestures: swipe right → "Done" (snaps back so
+/// the card stays, now marked done); swipe left → "Delete" (dismisses).
+class TaskDismissible extends StatelessWidget {
+  final Key itemKey;
+  final Widget child;
+  final VoidCallback onDone;
+  final VoidCallback onDelete;
+  const TaskDismissible({
+    super.key,
+    required this.itemKey,
+    required this.child,
+    required this.onDone,
+    required this.onDelete,
+  });
+
+  Widget _bg(Color color, IconData icon, String label, Alignment align) {
+    final left = align == Alignment.centerLeft;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      alignment: align,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (left) ...[
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(width: 8),
+          ],
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700)),
+          if (!left) ...[
+            const SizedBox(width: 8),
+            Icon(icon, color: Colors.white, size: 22),
+          ],
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dismissible(
+      key: itemKey,
+      background:
+          _bg(const Color(0xFF3B7A43), Icons.check, 'Done', Alignment.centerLeft),
+      secondaryBackground:
+          _bg(AppColors.danger, Icons.delete_outline, 'Delete',
+              Alignment.centerRight),
+      confirmDismiss: (dir) async {
+        if (dir == DismissDirection.startToEnd) {
+          onDone();
+          return false; // snap back; the card stays, now marked done
+        }
+        return true; // swipe left → delete
+      },
+      onDismissed: (_) => onDelete(),
       child: child,
     );
   }

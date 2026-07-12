@@ -141,9 +141,14 @@ class TodayScreen extends StatelessWidget {
         // today list
         if (list.isNotEmpty) ...[
           const SectionLabel('Today'),
-          ...list.map((t) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _TodayRow(task: t),
+          ...list.map((t) => TaskDismissible(
+                itemKey: ValueKey(t.id),
+                onDone: () => app.toggleDone(t.id),
+                onDelete: () => deleteTaskWithUndo(context, app, t),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _TodayRow(task: t),
+                ),
               )),
         ] else if (next == null) ...[
           const SizedBox(height: 6),
@@ -313,6 +318,10 @@ class _TodayRow extends StatelessWidget {
     return GestureDetector(
       onTap: () =>
           showTaskSheet(context, boardId: task.boardId, taskId: task.id),
+      onLongPress: () {
+        app.snoozeToTomorrow(task.id);
+        Toast.show(context, 'Pushed to tomorrow →');
+      },
       child: SoftCard(
         radius: 16,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),

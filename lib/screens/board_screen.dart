@@ -143,9 +143,14 @@ class BoardScreen extends StatelessWidget {
           const EmptyState(
               emoji: '🔍', title: 'Nothing matches this filter', dashed: false)
         else
-          ...shown.map((t) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _TaskRow(task: t, boardColor: color),
+          ...shown.map((t) => TaskDismissible(
+                itemKey: ValueKey(t.id),
+                onDone: () => app.toggleDone(t.id),
+                onDelete: () => deleteTaskWithUndo(context, app, t),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _TaskRow(task: t, boardColor: color),
+                ),
               )),
 
         // ---- archive bar ----
@@ -244,6 +249,10 @@ class _TaskRow extends StatelessWidget {
       child: GestureDetector(
         onTap: () =>
             showTaskSheet(context, boardId: task.boardId, taskId: task.id),
+        onLongPress: () {
+          app.snoozeToTomorrow(task.id);
+          Toast.show(context, 'Pushed to tomorrow →');
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           decoration: BoxDecoration(
@@ -332,6 +341,8 @@ class _TaskRow extends StatelessWidget {
       task.prio == TaskPrio.low ||
       (task.date != null && task.date!.isNotEmpty) ||
       (task.person != null && task.person!.isNotEmpty) ||
+      task.repeat != null ||
+      task.subtasks.isNotEmpty ||
       task.status == TaskStatus.doing ||
       task.status == TaskStatus.todo;
 
@@ -366,6 +377,19 @@ class _TaskRow extends StatelessWidget {
     if (task.person != null && task.person!.isNotEmpty) {
       tags.add(Tag('👤 ${task.person}',
           bg: const Color(0xFFEEF2F7), fg: const Color(0xFF3D5266)));
+    }
+
+    if (task.repeat != null) {
+      tags.add(Tag(TaskRepeat.label(task.repeat),
+          bg: const Color(0xFFEDE9FB), fg: const Color(0xFF5B3FB0)));
+    }
+
+    if (task.subtasks.isNotEmpty) {
+      final done = task.subtasks.where((s) => s.done).length;
+      final allDone = done == task.subtasks.length;
+      tags.add(Tag('☑ $done/${task.subtasks.length}',
+          bg: allDone ? const Color(0xFFEAF6EC) : const Color(0xFFEEF2F7),
+          fg: allDone ? const Color(0xFF3B7A43) : const Color(0xFF3D5266)));
     }
 
     if (task.status == TaskStatus.doing) {

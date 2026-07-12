@@ -40,6 +40,10 @@ class _TaskSheetState extends State<_TaskSheet> {
   String _prio = TaskPrio.normal;
   bool _frog = false;
   DateTime? _remindAt;
+  String? _repeat; // null | daily | weekly | monthly
+  final List<TextEditingController> _subCtrls = [];
+  final List<bool> _subDone = [];
+  late TextEditingController _newSub;
   bool _deleteArmed = false;
   bool _listening = false;
 
@@ -56,6 +60,12 @@ class _TaskSheetState extends State<_TaskSheet> {
     _prio = t?.prio ?? TaskPrio.normal;
     _frog = t?.frog ?? false;
     _remindAt = t?.remindAt != null ? DateTime.tryParse(t!.remindAt!) : null;
+    _repeat = t?.repeat;
+    _newSub = TextEditingController();
+    for (final s in t?.subtasks ?? const <SubTask>[]) {
+      _subCtrls.add(TextEditingController(text: s.title));
+      _subDone.add(s.done);
+    }
   }
 
   @override
@@ -64,7 +74,126 @@ class _TaskSheetState extends State<_TaskSheet> {
     _name.dispose();
     _person.dispose();
     _note.dispose();
+    _newSub.dispose();
+    for (final c in _subCtrls) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  void _addSub() {
+    final t = _newSub.text.trim();
+    if (t.isEmpty) return;
+    setState(() {
+      _subCtrls.add(TextEditingController(text: t));
+      _subDone.add(false);
+      _newSub.clear();
+    });
+  }
+
+  void _removeSub(int i) {
+    setState(() {
+      _subCtrls.removeAt(i).dispose();
+      _subDone.removeAt(i);
+    });
+  }
+
+  List<SubTask> _collectSubtasks() {
+    final out = <SubTask>[];
+    for (var i = 0; i < _subCtrls.length; i++) {
+      final title = _subCtrls[i].text.trim();
+      if (title.isNotEmpty) out.add(SubTask(title: title, done: _subDone[i]));
+    }
+    return out;
+  }
+
+  Widget _checklistField() {
+    return SheetKit.field(
+      'Checklist (optional)',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < _subCtrls.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() => _subDone[i] = !_subDone[i]),
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: _subDone[i] ? AppColors.ink : Colors.transparent,
+                        borderRadius: BorderRadius.circular(7),
+                        border: Border.all(
+                            color: _subDone[i] ? AppColors.ink : AppColors.line,
+                            width: 2),
+                      ),
+                      child: _subDone[i]
+                          ? const Icon(Icons.check, size: 14, color: Colors.white)
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _subCtrls[i],
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: _subDone[i] ? AppColors.muted : AppColors.ink,
+                        decoration: _subDone[i]
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none,
+                      ),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        hintText: 'Step',
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => _removeSub(i),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.close, size: 18, color: AppColors.muted),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Row(
+            children: [
+              const Icon(Icons.add, size: 18, color: AppColors.muted),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _newSub,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _addSub(),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    hintText: 'Add a step…',
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: _addSub,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Text('Add',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700, color: AppColors.ink)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   void _toggleVoice() {
@@ -147,6 +276,8 @@ class _TaskSheetState extends State<_TaskSheet> {
       prio: _prio,
       frog: _frog,
       remindAt: _remindAt?.toIso8601String(),
+      repeat: _repeat,
+      subtasks: _collectSubtasks(),
     );
     Navigator.of(context).pop();
     Toast.show(context, 'Saved');
@@ -309,6 +440,31 @@ class _TaskSheetState extends State<_TaskSheet> {
             onChanged: (v) => setState(() => _status = v),
           ),
         ),
+        // Repeat
+        SheetKit.field(
+          'Repeat',
+          _Segmented(
+            options: const [
+              ('none', 'Once', false),
+              ('daily', 'Daily', false),
+              ('weekly', 'Weekly', false),
+              ('monthly', 'Monthly', false),
+            ],
+            value: _repeat ?? 'none',
+            onChanged: (v) =>
+                setState(() => _repeat = v == 'none' ? null : v),
+          ),
+        ),
+        if (_repeat != null)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 14, top: 2),
+            child: Text(
+              'When you complete it, the next one is created automatically.',
+              style: TextStyle(fontSize: 12.5, color: AppColors.muted),
+            ),
+          ),
+        // Checklist / subtasks
+        _checklistField(),
         // Reminder
         SheetKit.field(
           'Reminder',
