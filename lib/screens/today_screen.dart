@@ -10,6 +10,7 @@ import '../theme.dart';
 import '../widgets/backup_sheet.dart';
 import '../widgets/coach_sheet.dart';
 import '../widgets/common.dart';
+import '../widgets/sync_sheet.dart';
 import '../widgets/ideas_sheet.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/task_sheet.dart';
@@ -624,6 +625,44 @@ class _SettingsSheet extends StatelessWidget {
                         ),
                       ),
                       Icon(Icons.chevron_right, color: AppColors.muted),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () {
+                  final rootCtx =
+                      Navigator.of(context, rootNavigator: true).context;
+                  Navigator.pop(context);
+                  showSyncSheet(rootCtx);
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Browser capture',
+                                style: TextStyle(
+                                    fontSize: 15, fontWeight: FontWeight.w600)),
+                            Text(
+                                app.syncEnabled
+                                    ? 'On · tasks from the Chrome extension land in Inbox'
+                                    : 'Send tasks here from a Chrome extension',
+                                style: const TextStyle(
+                                    fontSize: 12.5, color: AppColors.muted)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: AppColors.muted),
                     ],
                   ),
                 ),

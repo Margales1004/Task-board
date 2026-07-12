@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -8,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'achievements.dart';
 import 'models.dart';
 import 'reminders.dart';
+import 'sync.dart';
 
 enum AppTab { today, home, stats, archive }
 
@@ -42,6 +44,12 @@ class AppState extends ChangeNotifier {
 
   // Tally of chosen "why am I stuck?" answers, for the Insights panel.
   Map<String, int> blockReasonTally = {};
+
+  // Browser-capture sync (Chrome extension → cloud inbox → this app).
+  String? syncCode; // secret pairing code (also the inbox path segment)
+  String? syncDbUrl; // Firebase Realtime Database URL
+  bool get syncEnabled =>
+      (syncCode?.isNotEmpty ?? false) && (syncDbUrl?.isNotEmpty ?? false);
 
   // Achievements already shown (so we only toast newly-earned ones).
   List<String> seenAchievements = [];
@@ -138,6 +146,8 @@ class AppState extends ChangeNotifier {
           blockReasonTally = (settings['blockReasonTally'] as Map?)
                   ?.map((k, v) => MapEntry(k as String, (v as num).toInt())) ??
               {};
+          syncCode = settings['syncCode'] as String?;
+          syncDbUrl = settings['syncDbUrl'] as String?;
           seenAchievements =
               (settings['seenAchievements'] as List?)?.cast<String>().toList() ??
                   seenAchievements;
@@ -176,6 +186,80 @@ class AppState extends ChangeNotifier {
       _syncReminders();
       _scheduleNudges();
     }
+    // Browser-capture: start pulling from the cloud inbox if configured.
+    _startInboxPolling();
+  }
+
+  // ---------------- browser-capture sync ----------------
+  Timer? _inboxTimer;
+  bool _polling = false;
+  final Set<String> _seenInboxKeys = {};
+
+  void _startInboxPolling() {
+    _inboxTimer?.cancel();
+    if (!syncEnabled) return;
+    pollInbox(); // once immediately
+    _inboxTimer =
+        Timer.periodic(const Duration(seconds: 20), (_) => pollInbox());
+  }
+
+  /// Public hook (e.g. call on app resume) for an immediate check.
+  void pollNow() => pollInbox();
+
+  /// Pull pending captured tasks from the cloud inbox into the Inbox board.
+  Future<void> pollInbox() async {
+    if (_polling || !syncEnabled) return;
+    _polling = true;
+    try {
+      final entries = await InboxSync.fetch(syncDbUrl!, syncCode!);
+      if (entries.isEmpty) return;
+      final boardId = ensureInboxBoard();
+      var added = 0;
+      for (final e in entries) {
+        if (_seenInboxKeys.contains(e.key)) continue;
+        _seenInboxKeys.add(e.key);
+        saveTask(
+          boardId: boardId,
+          name: e.name,
+          note: e.note,
+          status: TaskStatus.todo,
+          prio: TaskPrio.normal,
+        );
+        added++;
+        InboxSync.remove(syncDbUrl!, syncCode!, e.key); // best-effort cleanup
+      }
+      if (added > 0) notifyListeners();
+    } finally {
+      _polling = false;
+    }
+  }
+
+  /// The "Inbox" board captured tasks land in (created on first use).
+  String ensureInboxBoard() {
+    for (final b in boards) {
+      if (b.name.toLowerCase() == 'inbox') return b.id;
+    }
+    final id = uid();
+    boards.add(Board(id: id, name: 'Inbox', color: '#5B3FB0'));
+    _save();
+    return id;
+  }
+
+  String newSyncCode() {
+    // A long random code doubles as the secret inbox path segment.
+    var s = '';
+    for (var i = 0; i < 4; i++) {
+      s += _rng.nextInt(1 << 32).toRadixString(36);
+    }
+    return s;
+  }
+
+  void setSync({String? code, String? dbUrl}) {
+    syncCode = (code?.trim().isEmpty ?? true) ? null : code!.trim();
+    syncDbUrl = (dbUrl?.trim().isEmpty ?? true) ? null : dbUrl!.trim();
+    _seenInboxKeys.clear();
+    _save();
+    _startInboxPolling();
   }
 
   /// The full persisted state as a plain map (used by [_persist] and by
@@ -190,6 +274,8 @@ class AppState extends ChangeNotifier {
           'dailyNudges': dailyNudges,
           'procrastinationCoach': procrastinationCoach,
           'blockReasonTally': blockReasonTally,
+          'syncCode': syncCode,
+          'syncDbUrl': syncDbUrl,
           'seenAchievements': seenAchievements,
           'lastSuggestionsDay': lastSuggestionsDay,
         },
@@ -246,6 +332,8 @@ class AppState extends ChangeNotifier {
         blockReasonTally = (settings['blockReasonTally'] as Map?)
                 ?.map((k, v) => MapEntry(k as String, (v as num).toInt())) ??
             blockReasonTally;
+        syncCode = settings['syncCode'] as String? ?? syncCode;
+        syncDbUrl = settings['syncDbUrl'] as String? ?? syncDbUrl;
         seenAchievements =
             (settings['seenAchievements'] as List?)?.cast<String>().toList() ??
                 seenAchievements;

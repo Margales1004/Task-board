@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "My Boards — Quick Capture",
+  "version": "1.0.0",
+  "description": "Select text on any web page and send it straight to your My Boards Inbox.",
+  "permissions": ["contextMenus", "storage", "activeTab", "notifications"],
+  "host_permissions": ["https://*.firebaseio.com/"],
+  "background": { "service_worker": "background.js" },
+  "options_page": "options.html",
+  "action": { "default_title": "Add this page to My Boards" },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
