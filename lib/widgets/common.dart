@@ -4,74 +4,112 @@ import '../app_state.dart';
 import '../models.dart';
 import '../theme.dart';
 
-/// Delete [task] and show an "Undo" snackbar that reinserts it if tapped.
+/// Delete [task] and show an "Undo" toast that reinserts it if tapped.
 void deleteTaskWithUndo(BuildContext context, AppState app, Task task) {
   app.deleteTask(task.id);
-  final messenger = ScaffoldMessenger.of(context);
-  messenger.clearSnackBars();
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text('Deleted "${task.name}"'),
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: AppColors.ink,
-      duration: const Duration(seconds: 4),
-      action: SnackBarAction(
-        label: 'Undo',
-        textColor: Colors.white,
-        onPressed: () => app.reinsertTask(task),
-      ),
-    ),
+  Toast.show(
+    context,
+    'Deleted "${task.name}"',
+    actionLabel: 'Undo',
+    onAction: () => app.reinsertTask(task),
   );
 }
 
 /// A small pill toast at the bottom of the screen (mirrors `.toast` in the HTML).
+/// Auto-dismisses after [duration]; if an [actionLabel] is given it stays a bit
+/// longer and shows a tappable action (e.g. "Undo").
 class Toast {
   static OverlayEntry? _entry;
   static Timer? _timer;
 
-  static void show(BuildContext context, String msg) {
+  static void show(
+    BuildContext context,
+    String msg, {
+    String? actionLabel,
+    VoidCallback? onAction,
+    Duration? duration,
+  }) {
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) return;
 
     _timer?.cancel();
     _entry?.remove();
+    _entry = null;
 
-    final entry = OverlayEntry(
-      builder: (ctx) => Positioned(
-        left: 0,
-        right: 0,
-        bottom: 130 + MediaQuery.of(ctx).padding.bottom,
-        child: IgnorePointer(
-          child: Center(
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-                decoration: BoxDecoration(
-                  color: AppColors.ink,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Text(
-                  msg,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+    late OverlayEntry entry;
+    var removed = false;
+    void dismiss() {
+      if (removed) return;
+      removed = true;
+      _timer?.cancel();
+      entry.remove();
+      if (_entry == entry) _entry = null;
+    }
+
+    final pill = Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+        decoration: BoxDecoration(
+          color: AppColors.ink,
+          borderRadius: BorderRadius.circular(99),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                msg,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-          ),
+            if (actionLabel != null) ...[
+              const SizedBox(width: 16),
+              GestureDetector(
+                onTap: () {
+                  dismiss();
+                  onAction?.call();
+                },
+                child: Text(
+                  actionLabel,
+                  style: const TextStyle(
+                    color: Color(0xFFFFC857),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+
+    entry = OverlayEntry(
+      builder: (ctx) => Positioned(
+        left: 16,
+        right: 16,
+        bottom: 130 + MediaQuery.of(ctx).padding.bottom,
+        child: Center(
+          // Non-action toasts ignore pointers (purely informational); a toast
+          // with an action must be tappable.
+          child: actionLabel == null ? IgnorePointer(child: pill) : pill,
         ),
       ),
     );
     _entry = entry;
     overlay.insert(entry);
-    _timer = Timer(const Duration(milliseconds: 1800), () {
-      entry.remove();
-      if (_entry == entry) _entry = null;
-    });
+    _timer = Timer(
+      duration ??
+          (actionLabel != null
+              ? const Duration(seconds: 4)
+              : const Duration(milliseconds: 1800)),
+      dismiss,
+    );
   }
 }
 
