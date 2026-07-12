@@ -65,6 +65,16 @@ Two ways to capture — pick whichever fits the moment:
 
 Change the shortcut anytime at `chrome://extensions/shortcuts`.
 
+### Capturing from desktop apps (e.g. Microsoft Teams)
+
+The extension can't see inside non-browser apps, but the edit popup reads your
+clipboard, so it still takes two seconds:
+
+1. In the app (e.g. Teams desktop), select the message and **copy** it (Ctrl+C).
+2. Switch to Chrome (any tab) and press **Alt+Shift+Q**.
+3. The popup opens with the copied text already filled in — edit if needed and
+   press **Enter**.
+
 ## Notes
 
 - The inbox only holds tasks briefly — the app deletes each one right after

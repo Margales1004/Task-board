@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "My Boards — Quick Capture",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Select text on any web page and send it straight to your My Boards Inbox.",
-  "permissions": ["contextMenus", "storage", "activeTab", "scripting", "notifications"],
+  "permissions": ["contextMenus", "storage", "activeTab", "scripting", "notifications", "clipboardRead"],
   "host_permissions": [
     "https://*.firebaseio.com/",
     "https://*.firebasedatabase.app/"

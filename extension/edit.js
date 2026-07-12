@@ -1,14 +1,27 @@
 const $ = (id) => document.getElementById(id);
 
-// Prefill from the captured selection stashed by the background worker.
-chrome.storage.session.get("pendingCapture", ({ pendingCapture }) => {
+// Prefill: use the captured selection if there was one; otherwise fall back to
+// the clipboard (so "copy in Teams desktop → Alt+Shift+Q" lands the text here).
+async function prefill() {
+  const { pendingCapture } = await chrome.storage.session.get("pendingCapture");
   const p = pendingCapture || {};
-  $("name").value = p.name || "";
-  $("note").value = p.note || "";
+  let name = p.name || "";
+  const note = p.note || "";
+  if (!name) {
+    try {
+      const clip = (await navigator.clipboard.readText()).trim();
+      if (clip) name = clip;
+    } catch (_) {
+      // clipboard unavailable — leave the field empty for manual entry
+    }
+  }
+  $("name").value = name;
+  $("note").value = note;
   const el = $("name");
   el.focus();
   el.select();
-});
+}
+prefill();
 
 function setError(msg) {
   $("status").textContent = msg || "";
