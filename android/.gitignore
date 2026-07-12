@@ -12,3 +12,9 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Exception: this personal (non-Play-Store) app commits ONE stable keystore so
+# every build shares a signature and APK updates install without "App not
+# installed". This is a deliberate tradeoff for a personal app, not a mistake.
+!key.properties
+!app/taskboard.jks

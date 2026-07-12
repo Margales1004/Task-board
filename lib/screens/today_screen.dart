@@ -7,6 +7,7 @@ import '../app_state.dart';
 import '../models.dart';
 import '../reminders.dart';
 import '../theme.dart';
+import '../widgets/backup_sheet.dart';
 import '../widgets/common.dart';
 import '../widgets/ideas_sheet.dart';
 import '../widgets/progress_ring.dart';
@@ -548,6 +549,44 @@ class _SettingsSheet extends StatelessWidget {
                     style: TextStyle(fontSize: 12.5, color: AppColors.muted),
                   ),
                 ),
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () {
+                  // Capture a stable context before this sheet's own context
+                  // is torn down by the pop below.
+                  final rootCtx = Navigator.of(context, rootNavigator: true)
+                      .context;
+                  Navigator.pop(context);
+                  showBackupSheet(rootCtx);
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Backup & restore',
+                                style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600)),
+                            Text('Save or move your tasks to a new install',
+                                style: TextStyle(
+                                    fontSize: 12.5, color: AppColors.muted)),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: AppColors.muted),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),

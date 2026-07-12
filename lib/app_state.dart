@@ -165,33 +165,79 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// The full persisted state as a plain map (used by [_persist] and by
+  /// [exportJson] for backups).
+  Map<String, dynamic> _snapshot() => {
+        'boards': boards.map((b) => b.toJson()).toList(),
+        'tasks': tasks.map((t) => t.toJson()).toList(),
+        'settings': {
+          'dailyGoal': dailyGoal,
+          'focusMinutes': focusMinutes,
+          'breakMinutes': breakMinutes,
+          'dailyNudges': dailyNudges,
+          'seenAchievements': seenAchievements,
+          'lastSuggestionsDay': lastSuggestionsDay,
+        },
+        'focus': {
+          'taskId': focusTaskId,
+          'isBreak': focusIsBreak,
+          'endMs': focusEndMs,
+          'paused': focusPausedRemaining,
+        },
+      };
+
   Future<void> _persist() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        _storeKey,
-        jsonEncode({
-          'boards': boards.map((b) => b.toJson()).toList(),
-          'tasks': tasks.map((t) => t.toJson()).toList(),
-          'settings': {
-            'dailyGoal': dailyGoal,
-            'focusMinutes': focusMinutes,
-            'breakMinutes': breakMinutes,
-            'dailyNudges': dailyNudges,
-            'seenAchievements': seenAchievements,
-            'lastSuggestionsDay': lastSuggestionsDay,
-          },
-          'focus': {
-            'taskId': focusTaskId,
-            'isBreak': focusIsBreak,
-            'endMs': focusEndMs,
-            'paused': focusPausedRemaining,
-          },
-        }),
-      );
+      await prefs.setString(_storeKey, jsonEncode(_snapshot()));
     } catch (_) {
       // ignore; UI shows a toast at the call site if needed
     }
+  }
+
+  // ---------------- backup / restore ----------------
+  /// A human-copyable JSON backup of all boards, tasks and settings.
+  String exportJson() =>
+      const JsonEncoder.withIndent('  ').convert(_snapshot());
+
+  /// Replace all data from a backup produced by [exportJson]. Returns false if
+  /// the text can't be parsed as a valid backup (data is left untouched).
+  Future<bool> importJson(String raw) async {
+    Map<String, dynamic> decoded;
+    try {
+      decoded = jsonDecode(raw.trim()) as Map<String, dynamic>;
+    } catch (_) {
+      return false;
+    }
+    // A valid backup must at least carry the boards/tasks arrays.
+    if (decoded['boards'] is! List || decoded['tasks'] is! List) return false;
+    try {
+      boards = (decoded['boards'] as List)
+          .map((e) => Board.fromJson(e as Map<String, dynamic>))
+          .toList();
+      tasks = (decoded['tasks'] as List)
+          .map((e) => Task.fromJson(e as Map<String, dynamic>))
+          .toList();
+      final settings = decoded['settings'] as Map<String, dynamic>?;
+      if (settings != null) {
+        dailyGoal = (settings['dailyGoal'] as num?)?.toInt() ?? dailyGoal;
+        focusMinutes =
+            (settings['focusMinutes'] as num?)?.toInt() ?? focusMinutes;
+        breakMinutes =
+            (settings['breakMinutes'] as num?)?.toInt() ?? breakMinutes;
+        dailyNudges = (settings['dailyNudges'] as bool?) ?? dailyNudges;
+        seenAchievements =
+            (settings['seenAchievements'] as List?)?.cast<String>().toList() ??
+                seenAchievements;
+        lastSuggestionsDay =
+            settings['lastSuggestionsDay'] as String? ?? lastSuggestionsDay;
+      }
+    } catch (_) {
+      return false;
+    }
+    _save();
+    if (Reminders.available) _scheduleNudges();
+    return true;
   }
 
   void _save() {
