@@ -566,6 +566,7 @@ class AppState extends ChangeNotifier {
 
     if (id != null) {
       final t = taskById(id)!;
+      t.boardId = boardId;
       t.name = name;
       t.date = date;
       t.person = person;

@@ -10,9 +10,11 @@ import '../theme.dart';
 import 'board_sheet.dart' show SheetKit;
 import 'common.dart';
 
-/// Bottom sheet to create or edit a task on [boardId]. Pass [taskId] to edit.
+/// Bottom sheet to create or edit a task. Pass [boardId] to preselect a board
+/// (omit it — e.g. from the Today screen — to let the user pick one). Pass
+/// [taskId] to edit an existing task.
 Future<void> showTaskSheet(BuildContext context,
-    {required String boardId, String? taskId}) {
+    {String? boardId, String? taskId}) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -23,9 +25,9 @@ Future<void> showTaskSheet(BuildContext context,
 }
 
 class _TaskSheet extends StatefulWidget {
-  final String boardId;
+  final String? boardId;
   final String? taskId;
-  const _TaskSheet({required this.boardId, this.taskId});
+  const _TaskSheet({this.boardId, this.taskId});
 
   @override
   State<_TaskSheet> createState() => _TaskSheetState();
@@ -35,6 +37,7 @@ class _TaskSheetState extends State<_TaskSheet> {
   late TextEditingController _name;
   late TextEditingController _person;
   late TextEditingController _note;
+  String? _boardId; // selected board for this task
   String? _date; // yyyy-MM-dd
   String _status = TaskStatus.todo;
   String _prio = TaskPrio.normal;
@@ -52,6 +55,9 @@ class _TaskSheetState extends State<_TaskSheet> {
     super.initState();
     final app = context.read<AppState>();
     final t = widget.taskId != null ? app.taskById(widget.taskId!) : null;
+    _boardId = widget.boardId ??
+        t?.boardId ??
+        (app.boards.isNotEmpty ? app.boards.first.id : null);
     _name = TextEditingController(text: t?.name ?? '');
     _person = TextEditingController(text: t?.person ?? '');
     _note = TextEditingController(text: t?.note ?? '');
@@ -105,6 +111,65 @@ class _TaskSheetState extends State<_TaskSheet> {
       if (title.isNotEmpty) out.add(SubTask(title: title, done: _subDone[i]));
     }
     return out;
+  }
+
+  Widget _boardField(AppState app) {
+    if (app.boards.isEmpty) {
+      return SheetKit.field(
+        'Board',
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.bg,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Text(
+            "A 'Personal' board will be created for this task.",
+            style: TextStyle(fontSize: 13.5, color: AppColors.muted),
+          ),
+        ),
+      );
+    }
+    return SheetKit.field(
+      'Board',
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: app.boards.map((b) {
+          final sel = b.id == _boardId;
+          final color = AppColors.fromHex(b.color);
+          return GestureDetector(
+            onTap: () => setState(() => _boardId = b.id),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: sel ? AppColors.ink : AppColors.bg,
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(
+                    color: sel ? AppColors.ink : AppColors.line, width: 1.5),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration:
+                        BoxDecoration(color: color, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(b.name,
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: sel ? Colors.white : AppColors.ink)),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 
   Widget _checklistField() {
@@ -265,9 +330,11 @@ class _TaskSheetState extends State<_TaskSheet> {
       Toast.show(context, "What's the task?");
       return;
     }
+    // Pick the chosen board, or spin up a default one if none exist yet.
+    final boardId = _boardId ?? app.ensureDefaultBoard();
     app.saveTask(
       id: widget.taskId,
-      boardId: widget.boardId,
+      boardId: boardId,
       name: name,
       date: _date,
       person: _person.text.trim().isEmpty ? null : _person.text.trim(),
@@ -332,6 +399,7 @@ class _TaskSheetState extends State<_TaskSheet> {
             child: Text('Listening… speak your task',
                 style: TextStyle(fontSize: 12.5, color: AppColors.danger)),
           ),
+        _boardField(app),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

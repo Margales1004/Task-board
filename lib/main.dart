@@ -106,7 +106,10 @@ class RootShell extends StatelessWidget {
             ),
           ),
         ),
-        floatingActionButton: app.tab == AppTab.home ? _buildFab(context, app) : null,
+        floatingActionButton:
+            (app.tab == AppTab.home || app.tab == AppTab.today)
+                ? _buildFab(context, app)
+                : null,
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
         bottomNavigationBar: _BottomNav(app: app),
       ),
@@ -114,7 +117,11 @@ class RootShell extends StatelessWidget {
   }
 
   Widget _buildFab(BuildContext context, AppState app) {
-    final label = app.currentBoardId != null ? 'New task' : 'New board';
+    // "New task" on the Today screen or inside a board; "New board" on the
+    // Boards overview.
+    final taskMode =
+        app.tab == AppTab.today || app.currentBoardId != null;
+    final label = taskMode ? 'New task' : 'New board';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: FloatingActionButton.extended(
@@ -122,7 +129,10 @@ class RootShell extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 6,
         onPressed: () {
-          if (app.currentBoardId != null) {
+          if (app.tab == AppTab.today) {
+            // No board preselected → the sheet shows a board picker.
+            showTaskSheet(context);
+          } else if (app.currentBoardId != null) {
             showTaskSheet(context, boardId: app.currentBoardId!);
           } else {
             showBoardSheet(context);
