@@ -38,6 +38,10 @@ class AppState extends ChangeNotifier {
   int focusMinutes = 25; // Pomodoro focus length
   int breakMinutes = 5; // Pomodoro break length
   bool dailyNudges = true; // daily reminder notifications
+  bool procrastinationCoach = true; // ask "why stuck?" on repeated postpones
+
+  // Tally of chosen "why am I stuck?" answers, for the Insights panel.
+  Map<String, int> blockReasonTally = {};
 
   // Achievements already shown (so we only toast newly-earned ones).
   List<String> seenAchievements = [];
@@ -73,6 +77,9 @@ class AppState extends ChangeNotifier {
     focusIsBreak = isBreak;
     focusEndMs = deadline.millisecondsSinceEpoch;
     focusPausedRemaining = null;
+    // Actually starting work clears the task's "stuck" state.
+    final t = taskById(taskId);
+    if (t != null) t.deferCount = 0;
     _save();
   }
 
@@ -125,6 +132,12 @@ class AppState extends ChangeNotifier {
           breakMinutes =
               (settings['breakMinutes'] as num?)?.toInt() ?? breakMinutes;
           dailyNudges = (settings['dailyNudges'] as bool?) ?? dailyNudges;
+          procrastinationCoach =
+              (settings['procrastinationCoach'] as bool?) ??
+                  procrastinationCoach;
+          blockReasonTally = (settings['blockReasonTally'] as Map?)
+                  ?.map((k, v) => MapEntry(k as String, (v as num).toInt())) ??
+              {};
           seenAchievements =
               (settings['seenAchievements'] as List?)?.cast<String>().toList() ??
                   seenAchievements;
@@ -175,6 +188,8 @@ class AppState extends ChangeNotifier {
           'focusMinutes': focusMinutes,
           'breakMinutes': breakMinutes,
           'dailyNudges': dailyNudges,
+          'procrastinationCoach': procrastinationCoach,
+          'blockReasonTally': blockReasonTally,
           'seenAchievements': seenAchievements,
           'lastSuggestionsDay': lastSuggestionsDay,
         },
@@ -226,6 +241,11 @@ class AppState extends ChangeNotifier {
         breakMinutes =
             (settings['breakMinutes'] as num?)?.toInt() ?? breakMinutes;
         dailyNudges = (settings['dailyNudges'] as bool?) ?? dailyNudges;
+        procrastinationCoach =
+            (settings['procrastinationCoach'] as bool?) ?? procrastinationCoach;
+        blockReasonTally = (settings['blockReasonTally'] as Map?)
+                ?.map((k, v) => MapEntry(k as String, (v as num).toInt())) ??
+            blockReasonTally;
         seenAchievements =
             (settings['seenAchievements'] as List?)?.cast<String>().toList() ??
                 seenAchievements;
@@ -378,6 +398,7 @@ class AppState extends ChangeNotifier {
       t.date != null &&
       t.date!.isNotEmpty &&
       t.status != TaskStatus.done &&
+      t.status != TaskStatus.waiting &&
       t.date!.compareTo(todayStr()) < 0;
 
   bool isToday(Task t) => t.date == todayStr();
@@ -436,6 +457,7 @@ class AppState extends ChangeNotifier {
     final list = activeTasks
         .where((t) =>
             t.status != TaskStatus.done &&
+            t.status != TaskStatus.waiting &&
             (t.frog || isLate(t) || isToday(t)))
         .toList();
     const pRank = {'high': 0, 'normal': 1, 'low': 2};
@@ -632,6 +654,7 @@ class AppState extends ChangeNotifier {
     } else {
       t.status = TaskStatus.done;
       t.completedAt = todayStr();
+      t.deferCount = 0; // finished — clear any "stuck" state
       // Recurring task: spawn the next occurrence so the habit rolls forward.
       // The completed instance stays done (preserving streak/stats history).
       if (t.repeat != null && !t.archived) {
@@ -674,16 +697,72 @@ class AppState extends ChangeNotifier {
     _save();
   }
 
-  /// Move a task's due date to tomorrow (quick procrastination triage).
+  /// Move a task's due date to tomorrow (quick procrastination triage). Counts
+  /// as one postponement, which is what the procrastination coach watches.
   void snoozeToTomorrow(String id) {
     final t = taskById(id);
     if (t == null) return;
     final tm = DateTime.now().add(const Duration(days: 1));
     t.date = iso(tm);
+    t.deferCount++;
     if (t.status == TaskStatus.done) {
       t.status = TaskStatus.todo;
       t.completedAt = null;
     }
+    _save();
+  }
+
+  // ---------------- procrastination coach ----------------
+  /// True when this task has been postponed enough that, instead of snoozing
+  /// again, we should ask what's blocking it.
+  bool shouldCoach(Task t) =>
+      procrastinationCoach &&
+      t.status != TaskStatus.done &&
+      t.deferCount >= 2;
+
+  void setProcrastinationCoach(bool value) {
+    procrastinationCoach = value;
+    _save();
+  }
+
+  /// Record the chosen "why am I stuck?" answer (for Insights) and clear the
+  /// postpone counter so the coach doesn't immediately re-trigger.
+  void recordBlockReason(String id, String reasonKey) {
+    blockReasonTally[reasonKey] = (blockReasonTally[reasonKey] ?? 0) + 1;
+    final t = taskById(id);
+    if (t != null) {
+      t.blockReason = reasonKey;
+      t.deferCount = 0;
+    }
+    _save();
+  }
+
+  /// "Name the first step": add it as the top checklist item and focus the task.
+  void addFirstStep(String id, String step) {
+    final t = taskById(id);
+    if (t == null || step.trim().isEmpty) return;
+    t.subtasks.insert(0, SubTask(title: step.trim()));
+    t.status = TaskStatus.doing;
+    t.deferCount = 0;
+    _save();
+  }
+
+  /// "Write a bad first draft": add a permission-giving step.
+  void addBadDraftStep(String id) {
+    final t = taskById(id);
+    if (t == null) return;
+    t.subtasks.add(SubTask(title: 'Write a bad first draft (10 min)'));
+    t.deferCount = 0;
+    _save();
+  }
+
+  /// "Waiting on someone": park the task so it stops nagging as overdue/today.
+  void moveToWaiting(String id) {
+    final t = taskById(id);
+    if (t == null) return;
+    t.status = TaskStatus.waiting;
+    t.frog = false;
+    t.deferCount = 0;
     _save();
   }
 
@@ -697,7 +776,12 @@ class AppState extends ChangeNotifier {
   void cycleStatus(String id) {
     final t = taskById(id);
     if (t == null) return;
-    t.status = t.status == TaskStatus.todo ? TaskStatus.doing : TaskStatus.todo;
+    if (t.status == TaskStatus.waiting) {
+      t.status = TaskStatus.todo; // un-park a waiting task
+    } else {
+      t.status =
+          t.status == TaskStatus.todo ? TaskStatus.doing : TaskStatus.todo;
+    }
     _save();
   }
 

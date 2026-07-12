@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../app_state.dart';
 import '../models.dart';
 import '../theme.dart';
+import '../widgets/coach_sheet.dart';
 import '../widgets/common.dart';
 import '../widgets/board_sheet.dart';
 import '../widgets/task_sheet.dart';
@@ -12,6 +13,7 @@ const _filters = <(String, String)>[
   ('all', 'All'),
   ('todo', 'To do'),
   ('doing', 'In progress'),
+  ('waiting', 'Waiting ⏳'),
   ('done', 'Done'),
   ('late', 'Overdue'),
   ('high', 'High 🔥'),
@@ -48,6 +50,11 @@ class BoardScreen extends StatelessWidget {
             .where((x) => x.prio == TaskPrio.high && x.status != TaskStatus.done)
             .length;
         if (c == 0 && app.currentFilter != 'high') continue;
+      }
+      if (k == 'waiting') {
+        final c = ts.where((x) => x.status == TaskStatus.waiting).length;
+        if (c == 0 && app.currentFilter != 'waiting') continue;
+        if (c > 0) l += ' $c';
       }
       final active = app.currentFilter == k;
       chips.add(Padding(
@@ -249,10 +256,7 @@ class _TaskRow extends StatelessWidget {
       child: GestureDetector(
         onTap: () =>
             showTaskSheet(context, boardId: task.boardId, taskId: task.id),
-        onLongPress: () {
-          app.snoozeToTomorrow(task.id);
-          Toast.show(context, 'Pushed to tomorrow →');
-        },
+        onLongPress: () => snoozeOrCoach(context, app, task),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           decoration: BoxDecoration(
@@ -396,6 +400,11 @@ class _TaskRow extends StatelessWidget {
       tags.add(Tag('◐ In progress',
           bg: const Color(0xFFE7F0FB),
           fg: const Color(0xFF2563A8),
+          onTap: () => app.cycleStatus(task.id)));
+    } else if (task.status == TaskStatus.waiting) {
+      tags.add(Tag('⏳ Waiting',
+          bg: const Color(0xFFFFF4DC),
+          fg: const Color(0xFF9A6B00),
           onTap: () => app.cycleStatus(task.id)));
     } else if (task.status == TaskStatus.todo) {
       tags.add(Tag('○ To do', onTap: () => app.cycleStatus(task.id)));

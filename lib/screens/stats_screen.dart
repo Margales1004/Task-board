@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../achievements.dart';
 import '../app_state.dart';
+import '../coach.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
@@ -141,6 +142,16 @@ class StatsScreen extends StatelessWidget {
     }
     final earned = earnedAchievements(app);
 
+    // procrastination coach: which blockers show up most
+    final reasonRows = app.blockReasonTally.entries
+        .where((e) => e.value > 0)
+        .toList()
+      ..sort((a, b) => b.value - a.value);
+    final maxReason =
+        math.max(1, reasonRows.map((e) => e.value).fold(0, math.max));
+    final topReason =
+        reasonRows.isNotEmpty ? coachReasonByKey(reasonRows.first.key) : null;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 150),
       children: [
@@ -262,6 +273,40 @@ class StatsScreen extends StatelessWidget {
           title: 'Achievements · ${earned.length}/${kAchievements.length}',
           child: _AchievementsGrid(earned: earned),
         ),
+        // what blocks you (procrastination coach)
+        if (reasonRows.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _Panel(
+            title: 'What blocks you',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (topReason != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Text(
+                      'Most often it’s “${topReason.label}”. '
+                      'Spotting the pattern is half the fix 💛',
+                      style: const TextStyle(
+                          fontSize: 13.5,
+                          color: AppColors.muted,
+                          height: 1.45),
+                    ),
+                  ),
+                for (var i = 0; i < reasonRows.length; i++)
+                  _HBar(
+                    name:
+                        coachReasonByKey(reasonRows[i].key)?.label ??
+                            reasonRows[i].key,
+                    color: AppColors
+                        .boardPalette[i % AppColors.boardPalette.length],
+                    frac: math.max(0.06, reasonRows[i].value / maxReason),
+                    value: '${reasonRows[i].value}×',
+                  ),
+              ],
+            ),
+          ),
+        ],
         // by board
         if (boardRows.isNotEmpty) ...[
           const SizedBox(height: 12),

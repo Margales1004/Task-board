@@ -22,6 +22,7 @@ class TaskStatus {
   static const todo = 'todo';
   static const doing = 'doing';
   static const done = 'done';
+  static const waiting = 'waiting'; // blocked on someone/something else
 }
 
 /// Task priority values, matching the HTML strings exactly.
@@ -85,6 +86,8 @@ class Task {
   int pomodoros; // completed focus sessions
   String? repeat; // null | daily | weekly | monthly
   List<SubTask> subtasks; // checklist items
+  int deferCount; // how many times this task has been postponed
+  String? blockReason; // last "why am I stuck?" answer (procrastination coach)
 
   Task({
     required this.id,
@@ -102,6 +105,8 @@ class Task {
     this.pomodoros = 0,
     this.repeat,
     List<SubTask>? subtasks,
+    this.deferCount = 0,
+    this.blockReason,
   }) : subtasks = subtasks ?? [];
 
   factory Task.fromJson(Map<String, dynamic> j) => Task(
@@ -123,6 +128,8 @@ class Task {
                 ?.map((e) => SubTask.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             [],
+        deferCount: (j['deferCount'] as num?)?.toInt() ?? 0,
+        blockReason: j['blockReason'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -141,5 +148,7 @@ class Task {
         'pomodoros': pomodoros,
         'repeat': repeat,
         'subtasks': subtasks.map((s) => s.toJson()).toList(),
+        'deferCount': deferCount,
+        'blockReason': blockReason,
       };
 }

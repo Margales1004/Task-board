@@ -20,7 +20,14 @@ const int _kFocusNotifId = 2147483646;
 class FocusScreen extends StatefulWidget {
   final String taskId;
   final String taskName;
-  const FocusScreen({super.key, required this.taskId, required this.taskName});
+  /// Optional one-off focus length (minutes), e.g. from the procrastination
+  /// coach's "just 5 minutes". Doesn't change the saved default.
+  final int? initialMinutes;
+  const FocusScreen(
+      {super.key,
+      required this.taskId,
+      required this.taskName,
+      this.initialMinutes});
 
   @override
   State<FocusScreen> createState() => _FocusScreenState();
@@ -44,7 +51,7 @@ class _FocusScreenState extends State<FocusScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     final app = context.read<AppState>();
-    _workMin = app.focusMinutes;
+    _workMin = widget.initialMinutes ?? app.focusMinutes;
     _breakMin = app.breakMinutes;
     // Restore a persisted session for this task (survives reload/navigation).
     if (app.focusTaskId == widget.taskId && app.hasActiveFocus) {

@@ -8,6 +8,7 @@ import '../models.dart';
 import '../reminders.dart';
 import '../theme.dart';
 import '../widgets/backup_sheet.dart';
+import '../widgets/coach_sheet.dart';
 import '../widgets/common.dart';
 import '../widgets/ideas_sheet.dart';
 import '../widgets/progress_ring.dart';
@@ -318,10 +319,7 @@ class _TodayRow extends StatelessWidget {
     return GestureDetector(
       onTap: () =>
           showTaskSheet(context, boardId: task.boardId, taskId: task.id),
-      onLongPress: () {
-        app.snoozeToTomorrow(task.id);
-        Toast.show(context, 'Pushed to tomorrow →');
-      },
+      onLongPress: () => snoozeOrCoach(context, app, task),
       child: SoftCard(
         radius: 16,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
@@ -558,6 +556,40 @@ class _SettingsSheet extends StatelessWidget {
                     style: TextStyle(fontSize: 12.5, color: AppColors.muted),
                   ),
                 ),
+              const SizedBox(height: 10),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Procrastination coach',
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w600)),
+                          Text(
+                              'When a task keeps getting pushed, ask why '
+                              'instead of nagging',
+                              style: TextStyle(
+                                  fontSize: 12.5, color: AppColors.muted)),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: app.procrastinationCoach,
+                      activeThumbColor: Colors.white,
+                      activeTrackColor: AppColors.ink,
+                      onChanged: (v) => app.setProcrastinationCoach(v),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 10),
               GestureDetector(
                 onTap: () {
