@@ -4,7 +4,10 @@
   "version": "1.0.0",
   "description": "Select text on any web page and send it straight to your My Boards Inbox.",
   "permissions": ["contextMenus", "storage", "activeTab", "notifications"],
-  "host_permissions": ["https://*.firebaseio.com/"],
+  "host_permissions": [
+    "https://*.firebaseio.com/",
+    "https://*.firebasedatabase.app/"
+  ],
   "background": { "service_worker": "background.js" },
   "options_page": "options.html",
   "action": { "default_title": "Add this page to My Boards" },
