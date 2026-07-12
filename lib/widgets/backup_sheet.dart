@@ -61,16 +61,7 @@ class _BackupSheetState extends State<_BackupSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 5,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                        color: AppColors.line,
-                        borderRadius: BorderRadius.circular(99)),
-                  ),
-                ),
+                const SheetHandle(),
                 Text('Backup & restore', style: displayStyle(size: 21)),
                 const SizedBox(height: 6),
                 const Text(

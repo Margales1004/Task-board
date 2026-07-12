@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../app_state.dart';
 import '../suggestions.dart';
 import '../theme.dart';
+import 'common.dart';
 
 /// Show the daily "Ideas for today" popup.
 Future<void> showDailyIdeasSheet(BuildContext context) {
@@ -64,16 +65,7 @@ class _IdeasSheetState extends State<_IdeasSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 5,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                      color: AppColors.line,
-                      borderRadius: BorderRadius.circular(99)),
-                ),
-              ),
+              const SheetHandle(),
               Text('Ideas for today ✨', style: displayStyle(size: 21)),
               const SizedBox(height: 4),
               const Text('Tap add to drop one into your list.',

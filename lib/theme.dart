@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class AppColors {
   static const bg = Color(0xFFF3F5F8);
   static const surface = Color(0xFFFFFFFF);
-  static const ink = Color(0xFF16222F);
+  static const ink = Color(0xFF023047);
   static const muted = Color(0xFF68788A);
   static const line = Color(0xFFE2E8EF);
   static const danger = Color(0xFFD64545);

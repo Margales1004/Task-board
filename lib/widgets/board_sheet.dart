@@ -166,17 +166,7 @@ class _SheetShell extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 5,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.line,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-              ),
+              const SheetHandle(),
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Text(title, style: displayStyle(size: 21)),

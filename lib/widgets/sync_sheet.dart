@@ -73,16 +73,7 @@ class _SyncSheetState extends State<_SyncSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 5,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                        color: AppColors.line,
-                        borderRadius: BorderRadius.circular(99)),
-                  ),
-                ),
+                const SheetHandle(),
                 Row(
                   children: [
                     Text('Browser capture', style: displayStyle(size: 21)),

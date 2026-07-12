@@ -402,16 +402,7 @@ class _GoalSheetState extends State<_GoalSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 5,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                      color: AppColors.line,
-                      borderRadius: BorderRadius.circular(99)),
-                ),
-              ),
+              const SheetHandle(),
               Text('Daily goal', style: displayStyle(size: 21)),
               const SizedBox(height: 6),
               const Text('How many tasks do you want to finish each day?',
@@ -506,16 +497,7 @@ class _SettingsSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 5,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                      color: AppColors.line,
-                      borderRadius: BorderRadius.circular(99)),
-                ),
-              ),
+              const SheetHandle(),
               Text('Settings', style: displayStyle(size: 21)),
               const SizedBox(height: 16),
               Container(

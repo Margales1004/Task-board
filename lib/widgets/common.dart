@@ -113,6 +113,36 @@ class Toast {
   }
 }
 
+/// The little grab bar at the top of a bottom sheet. Swiping down on it closes
+/// the sheet (the sheets use a custom transparent background, so the framework's
+/// built-in drag doesn't reach here — this makes "pull down to dismiss" work).
+class SheetHandle extends StatelessWidget {
+  const SheetHandle({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onVerticalDragEnd: (d) {
+        if ((d.primaryVelocity ?? 0) > 0) Navigator.of(context).maybePop();
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(top: 2, bottom: 16),
+        child: Center(
+          child: Container(
+            width: 42,
+            height: 5,
+            decoration: BoxDecoration(
+              color: AppColors.line,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The uppercase divider label ("COMING UP", "BOARDS", ...).
 class SectionLabel extends StatelessWidget {
   final String text;

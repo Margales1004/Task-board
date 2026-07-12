@@ -55,16 +55,7 @@ class _CoachSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 5,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                      color: AppColors.line,
-                      borderRadius: BorderRadius.circular(99)),
-                ),
-              ),
+              const SheetHandle(),
               Text('What’s stopping you? 💛', style: displayStyle(size: 22)),
               const SizedBox(height: 6),
               Text(
