@@ -163,14 +163,14 @@ class _BottomNav extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
-              _navBtn('☀️', 'Today', app.tab == AppTab.today,
+              _navBtn(Icons.wb_sunny_rounded, 'Today', app.tab == AppTab.today,
                   () => app.goTab(AppTab.today)),
-              _navBtn('🗂️', 'Boards', app.tab == AppTab.home,
+              _navBtn(Icons.dashboard_rounded, 'Boards', app.tab == AppTab.home,
                   () => app.goTab(AppTab.home)),
-              _navBtn('📊', 'Insights', app.tab == AppTab.stats,
-                  () => app.goTab(AppTab.stats)),
-              _navBtn('🗄️', 'Archive', app.tab == AppTab.archive,
-                  () => app.goTab(AppTab.archive)),
+              _navBtn(Icons.insights_rounded, 'Insights',
+                  app.tab == AppTab.stats, () => app.goTab(AppTab.stats)),
+              _navBtn(Icons.inventory_2_rounded, 'Archive',
+                  app.tab == AppTab.archive, () => app.goTab(AppTab.archive)),
             ],
           ),
         ),
@@ -178,7 +178,8 @@ class _BottomNav extends StatelessWidget {
     );
   }
 
-  Widget _navBtn(String icon, String label, bool active, VoidCallback onTap) {
+  Widget _navBtn(IconData icon, String label, bool active, VoidCallback onTap) {
+    final color = active ? AppColors.ink : AppColors.muted;
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -186,13 +187,13 @@ class _BottomNav extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(icon, style: const TextStyle(fontSize: 21)),
-            const SizedBox(height: 2),
+            Icon(icon, size: 24, color: color),
+            const SizedBox(height: 3),
             Text(label,
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
-                  color: active ? AppColors.ink : AppColors.muted,
+                  color: color,
                 )),
           ],
         ),
