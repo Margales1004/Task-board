@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'shell_notifications.dart';
+import 'shell_speech.dart';
 
 /// The hosted web app. Update only if the GitHub Pages URL changes.
 const String kAppUrl = 'https://margales1004.github.io/Task-board/';
@@ -58,6 +59,14 @@ class _WebShellState extends State<WebShell> {
         'Notifier',
         onMessageReceived: (JavaScriptMessage message) {
           ShellNotifications.handleMessage(message.message);
+        },
+      )
+      // Voice dictation: the web app posts start/stop here; results are pushed
+      // back into the page via runJavaScript.
+      ..addJavaScriptChannel(
+        'SpeechBridge',
+        onMessageReceived: (JavaScriptMessage message) {
+          ShellSpeech.handle(message.message, _controller);
         },
       )
       ..setNavigationDelegate(

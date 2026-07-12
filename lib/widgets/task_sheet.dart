@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../app_state.dart';
 import '../models.dart';
 import '../reminders.dart';
+import '../speech.dart';
 import '../theme.dart';
 import 'board_sheet.dart' show SheetKit;
 import 'common.dart';
@@ -40,6 +41,7 @@ class _TaskSheetState extends State<_TaskSheet> {
   bool _frog = false;
   DateTime? _remindAt;
   bool _deleteArmed = false;
+  bool _listening = false;
 
   @override
   void initState() {
@@ -58,10 +60,37 @@ class _TaskSheetState extends State<_TaskSheet> {
 
   @override
   void dispose() {
+    if (_listening) Speech.stop();
     _name.dispose();
     _person.dispose();
     _note.dispose();
     super.dispose();
+  }
+
+  void _toggleVoice() {
+    if (_listening) {
+      Speech.stop();
+      setState(() => _listening = false);
+      return;
+    }
+    if (!Speech.available) {
+      Toast.show(context, 'Voice input works in the installed app.');
+      return;
+    }
+    FocusScope.of(context).unfocus(); // hide the keyboard while dictating
+    Speech.listen(
+      onResult: (text) {
+        if (!mounted) return;
+        setState(() {
+          _name.text = text;
+          _name.selection = TextSelection.collapsed(offset: text.length);
+        });
+      },
+      onDone: () {
+        if (mounted) setState(() => _listening = false);
+      },
+    );
+    setState(() => _listening = true);
   }
 
   Future<void> _pickDate() async {
@@ -156,9 +185,22 @@ class _TaskSheetState extends State<_TaskSheet> {
             autofocus: !isEdit,
             maxLength: 120,
             textCapitalization: TextCapitalization.sentences,
-            decoration: SheetKit.input('e.g. Send summary to the client'),
+            decoration: SheetKit.input('e.g. Send summary to the client').copyWith(
+              suffixIcon: IconButton(
+                onPressed: _toggleVoice,
+                icon: Icon(_listening ? Icons.mic : Icons.mic_none,
+                    color: _listening ? AppColors.danger : AppColors.muted),
+                tooltip: 'Dictate',
+              ),
+            ),
           ),
         ),
+        if (_listening)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 14, top: 2),
+            child: Text('Listening… speak your task',
+                style: TextStyle(fontSize: 12.5, color: AppColors.danger)),
+          ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
