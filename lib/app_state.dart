@@ -247,9 +247,11 @@ class AppState extends ChangeNotifier {
 
   String newSyncCode() {
     // A long random code doubles as the secret inbox path segment.
+    // Use a 2^30 bound: on the web platform ints are 32-bit, so `1 << 32`
+    // overflows and `nextInt` throws — 0x40000000 is safe everywhere.
     var s = '';
-    for (var i = 0; i < 4; i++) {
-      s += _rng.nextInt(1 << 32).toRadixString(36);
+    for (var i = 0; i < 6; i++) {
+      s += _rng.nextInt(0x40000000).toRadixString(36);
     }
     return s;
   }
