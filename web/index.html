@@ -31,6 +31,23 @@
 
   <title>task_board</title>
   <link rel="manifest" href="manifest.json">
+
+  <script>
+    // This app is always online (it runs inside a WebView that loads the
+    // hosted site), so it does not use a service worker. Proactively remove any
+    // service worker that an older build registered, and clear its caches, so
+    // updates always load the latest version instead of a stale cached one.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        regs.forEach(function (r) { r.unregister(); });
+      }).catch(function () {});
+    }
+    if (window.caches && caches.keys) {
+      caches.keys().then(function (keys) {
+        keys.forEach(function (k) { caches.delete(k); });
+      }).catch(function () {});
+    }
+  </script>
 </head>
 <body>
   <!--

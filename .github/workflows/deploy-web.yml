@@ -42,8 +42,11 @@ jobs:
 
       # base-href must match the Pages sub-path for a project site:
       # https://<owner>.github.io/<repo>/
+      # --pwa-strategy=none: no service worker. The app is always loaded online
+      # inside a WebView, so the SW gives no offline benefit and only causes
+      # stale versions after a deploy. Disabling it makes updates show instantly.
       - name: Build web
-        run: flutter build web --release --base-href /Task-board/
+        run: flutter build web --release --base-href /Task-board/ --pwa-strategy=none
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
