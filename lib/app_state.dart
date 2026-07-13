@@ -815,20 +815,19 @@ class AppState extends ChangeNotifier {
     _save();
   }
 
-  /// A task that's been overdue by more than a day and still isn't done — the
+  /// An overdue task (its due date has passed) that still isn't done — the
   /// coach should gently ask what's blocking it. Returns the most overdue such
-  /// task not already coached today, or null. Drives the automatic pop-up.
+  /// task, or null. Drives the automatic pop-up on every app open.
   Task? taskNeedingCoach() {
     if (!procrastinationCoach) return null;
-    final cutoff = iso(DateTime.now().subtract(const Duration(days: 1)));
+    final today = todayStr();
     final candidates = activeTasks
         .where((t) =>
             t.status != TaskStatus.done &&
             t.status != TaskStatus.waiting &&
             t.date != null &&
             t.date!.isNotEmpty &&
-            t.date!.compareTo(cutoff) <= 0 && // due yesterday or earlier
-            t.coachedOn != todayStr())
+            t.date!.compareTo(today) < 0) // due date has passed
         .toList();
     if (candidates.isEmpty) return null;
     candidates.sort((a, b) => (a.date ?? '').compareTo(b.date ?? ''));

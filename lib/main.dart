@@ -15,8 +15,11 @@ import 'widgets/coach_sheet.dart';
 import 'widgets/common.dart';
 import 'widgets/ideas_sheet.dart';
 
-// Guards against scheduling the coach pop-up more than once per frame burst.
+// Guards for the coach pop-up: [_coachScheduled] avoids double-scheduling within
+// a frame burst; [_coachShownThisSession] limits it to once per app open (it
+// resets when the app/page reloads, so it pops again next time you open it).
 bool _coachScheduled = false;
+bool _coachShownThisSession = false;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -75,16 +78,17 @@ class RootShell extends StatelessWidget {
         app.markSuggestionsShown();
         showDailyIdeasSheet(context);
       });
-    } else if (!_coachScheduled) {
-      // Otherwise, if a task has been overdue by more than a day, gently ask
-      // what's blocking it (the procrastination coach).
+    } else if (!_coachScheduled && !_coachShownThisSession) {
+      // Otherwise, if a task's due date has passed and it still isn't done,
+      // gently ask what's blocking it (the procrastination coach). Fires once
+      // per app open.
       final stuck = app.taskNeedingCoach();
       if (stuck != null) {
         _coachScheduled = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _coachScheduled = false;
           if (!context.mounted) return;
-          app.markTaskCoached(stuck.id);
+          _coachShownThisSession = true;
           showCoachSheet(context, stuck.id);
         });
       }
